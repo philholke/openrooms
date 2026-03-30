@@ -1,0 +1,5 @@
+- [Project Vision](project_vision.md) — OpenRooms: open-source SevenRooms clone for hospitality (reservations, CRM, table mgmt, marketing)
+- [Tech Stack](project_techstack.md) — Next.js + FastAPI + Postgres (portable, Supabase-compatible)
+- [Multi-tenancy](project_multitenancy.md) — Tenant boundary is Organization, not Venue. Orgs have 1+ venues.
+- [V1 Scope](project_v1_scope.md) — Modules 1-3 + post-visit surveys only. No marketing, ordering, loyalty, AI, integrations.
+- [User Identity](user_identity.md) — Project owner is Philipp Hölke. Copyright to him, not Crimson Sun.
