@@ -3,6 +3,7 @@ Waitlist service — manages walk-in guest flow from check-in to seating.
 """
 
 import logging
+import secrets
 import uuid
 from datetime import datetime, timezone
 
@@ -191,6 +192,7 @@ async def seat_from_waitlist(
             status="seated",
             source="walk_in",
             notes=entry.notes,
+            cancel_token=secrets.token_urlsafe(32),
         )
         db.add(reservation)
 

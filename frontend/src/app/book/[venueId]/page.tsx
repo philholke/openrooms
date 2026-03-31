@@ -2,34 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
+import { publicFetch } from "@/lib/api";
 import { formatTime, today, cn } from "@/lib/utils";
 import type {
   AvailabilityResponse,
   AvailableSlot,
-  Envelope,
   Reservation,
   Venue,
 } from "@/lib/types";
-
-// ─── Public API helper (no auth token) ──────────────────────────────────
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-
-async function publicFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...init?.headers },
-  });
-  let body: Record<string, unknown>;
-  try {
-    body = await res.json();
-  } catch {
-    throw new Error("Invalid response from server");
-  }
-  if (!res.ok) throw new Error((body.detail as string) || "Request failed");
-  return (body as Envelope<T>).data;
-}
 
 // ─── Types ──────────────────────────────────────────────────────────────
 

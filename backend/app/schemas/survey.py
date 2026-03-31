@@ -13,7 +13,7 @@ class SurveyCreate(BaseModel):
     service_rating: int | None = Field(None, ge=1, le=5)
     ambiance_rating: int | None = Field(None, ge=1, le=5)
     drinks_rating: int | None = Field(None, ge=1, le=5)
-    comment: str | None = None
+    comment: str | None = Field(None, max_length=5000)
 
 
 class SurveyRead(BaseModel):

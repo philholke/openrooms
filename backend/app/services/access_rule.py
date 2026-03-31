@@ -80,6 +80,14 @@ async def update_access_rule(
             "min_party_size must be <= max_party_size",
         )
 
+    eff_require_deposit = updates.get("require_deposit", rule.require_deposit)
+    eff_deposit_amount = updates.get("deposit_amount_cents", rule.deposit_amount_cents)
+    if eff_require_deposit and not eff_deposit_amount:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "deposit_amount_cents is required when require_deposit is true",
+        )
+
     for field, value in updates.items():
         setattr(rule, field, value)
 

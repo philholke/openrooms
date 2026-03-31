@@ -29,7 +29,7 @@ export default function ReservationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Reservation | null>(null);
 
-  const fetchReservations = useCallback(async () => {
+  const fetchReservations = useCallback(async (signal?: AbortSignal) => {
     if (!venue) return;
     setLoading(true);
     setError(null);
@@ -41,24 +41,26 @@ export default function ReservationsPage() {
       const res = await api.get<Reservation[]>(
         `/venues/${venue.id}/reservations?${params}`
       );
+      if (signal?.aborted) return;
       setReservations(res.data);
       setTotal(res.meta?.total ?? res.data.length);
     } catch (err) {
+      if (signal?.aborted) return;
       setError(err instanceof Error ? err.message : "Failed to load reservations");
       setReservations([]);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [venue, date, activeTab]);
 
   useEffect(() => {
-    fetchReservations();
-  }, [fetchReservations]);
-
-  // Auto-refresh every 30s
-  useEffect(() => {
-    const interval = setInterval(fetchReservations, 30_000);
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    fetchReservations(controller.signal);
+    const interval = setInterval(() => fetchReservations(controller.signal), 30_000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [fetchReservations]);
 
   if (!venue) {

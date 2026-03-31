@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class TableRead(BaseModel):
@@ -44,3 +44,9 @@ class TableCreate(BaseModel):
     x_position: float | None = None
     y_position: float | None = None
     shape: str = Field("rectangle", max_length=50)
+
+    @model_validator(mode="after")
+    def _validate_capacity(self):
+        if self.min_capacity > self.max_capacity:
+            raise ValueError("min_capacity must be <= max_capacity")
+        return self

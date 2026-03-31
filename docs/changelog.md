@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.7.4 — Pre-Phase 3 Quality Review Round 2 (2026-03-31)
 ### 0.7.3 — Pre-Phase 3 Quality Review (2026-03-31)
 ### 0.7.2 — Post-Phase 2 Production Readiness (2026-03-31)
 ### 0.7.1 — Phase 2H: Code Quality & Security Hardening (2026-03-31)
@@ -14,6 +15,31 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.4 — Pre-Phase 3 Quality Review Round 2
+
+**Date**: 2026-03-31
+
+Second quality review pass addressing 10 findings (5 critical, 5 high) across backend and frontend. Full details in [`docs/completions/pre-phase-3-quality-review-2-completion.md`](completions/pre-phase-3-quality-review-2-completion.md).
+
+### Backend (7 fixes)
+- **Table capacity validation** — reservation updates now reject party sizes outside table min/max capacity (HTTP 409)
+- **Survey CRUD endpoints** — `GET/POST /venues/{id}/surveys`, `GET /surveys/{id}` (staff+)
+- **FloorPlan & Table CRUD endpoints** — 6 new endpoints for managing floor plans and tables (admin+/manager+)
+- **Walk-in cancel_token** — `seat_from_waitlist` now generates cryptographic cancel token for walk-in reservations
+- **AccessRuleUpdate deposit cross-validation** — partial updates now validate require_deposit + deposit_amount against existing DB values
+- **Waitlist/Survey schema bounds** — `quoted_wait_minutes` capped at 0–480, `comment` max 5000 chars, `TableCreate` validates min <= max capacity
+- **Query indexes** — composite indexes on `waitlist(venue_id, status)`, `reservations(venue_id, status)`, `reservations(guest_id)`
+
+### Frontend (3 fixes)
+- **Deduplicated token functions** — `storeTokens`/`clearTokens` centralized in `api.ts`, removed from `auth.ts`
+- **AbortController on dashboard fetches** — reservations and waitlist pages cancel in-flight requests on unmount
+- **Shared publicFetch** — booking widget now imports from `lib/api.ts` instead of defining its own fetch
+
+### Migration
+- `0004_add_query_indexes` — three new indexes for query performance
 
 ---
 

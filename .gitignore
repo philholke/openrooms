@@ -20,6 +20,14 @@ out/
 # Claude Code
 .claude/
 
+# Docs — internal planning/completion docs are not committed;
+# changelog.md is the public-facing record and IS committed.
+docs/*
+!docs/changelog.md
+!docs/v1-blueprint.md
+!docs/vision.md
+!docs/logo.svg
+
 # IDE
 .vscode/
 .idea/

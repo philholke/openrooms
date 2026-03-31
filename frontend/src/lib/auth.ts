@@ -8,7 +8,7 @@ import React, {
   useCallback,
   type ReactNode,
 } from "react";
-import { api } from "./api";
+import { api, storeTokens as storeTokenPair, clearTokens } from "./api";
 import type { TokenResponse, User } from "./types";
 
 interface AuthState {
@@ -26,17 +26,6 @@ interface AuthState {
 }
 
 const AuthContext = createContext<AuthState | null>(null);
-
-function storeTokens(tokens: TokenResponse) {
-  localStorage.setItem("access_token", tokens.access_token);
-  localStorage.setItem("refresh_token", tokens.refresh_token);
-}
-
-function clearTokens() {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("refresh_token");
-  localStorage.removeItem("selected_venue_id");
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -68,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
-    storeTokens(res.data);
+    storeTokenPair(res.data.access_token, res.data.refresh_token);
     await fetchUser();
   };
 
@@ -80,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string;
   }) => {
     const res = await api.post<TokenResponse>("/auth/register", data);
-    storeTokens(res.data);
+    storeTokenPair(res.data.access_token, res.data.refresh_token);
     await fetchUser();
   };
 

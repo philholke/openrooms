@@ -131,6 +131,32 @@ async function request<T>(
 
 // ─── Convenience methods ────────────────────────────────────────────────
 
+export { storeTokens, clearTokens };
+
+// ─── Public API helper (no auth token) ─────────────────────────────────
+// Used by the booking widget and other unauthenticated pages.
+
+export async function publicFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  let body: Record<string, unknown>;
+  try {
+    body = await res.json();
+  } catch {
+    throw new ApiError(res.status, "Invalid response from server");
+  }
+  if (!res.ok) {
+    throw new ApiError(
+      res.status,
+      (body.detail as string) || (body.message as string) || "Request failed",
+      body.errors,
+    );
+  }
+  return (body as Envelope<T>).data;
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path),
 

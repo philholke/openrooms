@@ -265,6 +265,24 @@ async def update_reservation(
 
     updates = data.model_dump(exclude_unset=True)
 
+    # ── Validate table capacity ──
+    # When table_id or party_size changes, ensure the party fits the table.
+    eff_table_id = updates.get("table_id", reservation.table_id)
+    eff_party_size = updates.get("party_size", reservation.party_size)
+    if eff_table_id and ("table_id" in updates or "party_size" in updates):
+        table_result = await db.execute(
+            select(Table).where(Table.id == eff_table_id, Table.is_active.is_(True))
+        )
+        table = table_result.scalar_one_or_none()
+        if table is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Table not found")
+        if eff_party_size < table.min_capacity or eff_party_size > table.max_capacity:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Party size {eff_party_size} does not fit table '{table.label}' "
+                f"(capacity {table.min_capacity}–{table.max_capacity})",
+            )
+
     # If party_size is changing, re-validate against the slot's capacity limit
     if "party_size" in updates and updates["party_size"] != reservation.party_size:
         new_size = updates["party_size"]

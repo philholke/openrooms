@@ -8,6 +8,8 @@ from app.api.v1.access_rules import router as access_rules_router
 from app.api.v1.availability import router as availability_router
 from app.api.v1.reservations import router as reservations_router
 from app.api.v1.waitlist import router as waitlist_router
+from app.api.v1.floor_plans import router as floor_plans_router
+from app.api.v1.surveys import router as surveys_router
 
 router = APIRouter()
 
@@ -19,3 +21,5 @@ router.include_router(access_rules_router)
 router.include_router(availability_router)
 router.include_router(reservations_router)
 router.include_router(waitlist_router)
+router.include_router(floor_plans_router)
+router.include_router(surveys_router)

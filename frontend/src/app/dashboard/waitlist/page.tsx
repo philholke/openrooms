@@ -17,7 +17,7 @@ export default function WaitlistPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
-  const fetchEntries = useCallback(async () => {
+  const fetchEntries = useCallback(async (signal?: AbortSignal) => {
     if (!venue) return;
     setLoading(true);
     setError(null);
@@ -25,23 +25,25 @@ export default function WaitlistPage() {
       const res = await api.get<WaitlistEntry[]>(
         `/venues/${venue.id}/waitlist?active_only=true`
       );
+      if (signal?.aborted) return;
       setEntries(res.data);
     } catch (err) {
+      if (signal?.aborted) return;
       setError(err instanceof Error ? err.message : "Failed to load waitlist");
       setEntries([]);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [venue]);
 
   useEffect(() => {
-    fetchEntries();
-  }, [fetchEntries]);
-
-  // Auto-refresh every 15s (waitlist changes faster than reservations)
-  useEffect(() => {
-    const interval = setInterval(fetchEntries, 15_000);
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    fetchEntries(controller.signal);
+    const interval = setInterval(() => fetchEntries(controller.signal), 15_000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [fetchEntries]);
 
   const [actionError, setActionError] = useState<string | null>(null);
