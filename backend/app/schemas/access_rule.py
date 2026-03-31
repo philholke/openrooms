@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class AccessRuleCreate(BaseModel):
@@ -21,7 +21,16 @@ class AccessRuleCreate(BaseModel):
     deposit_amount_cents: int | None = Field(None, ge=0)
     cancellation_policy_hours: int | None = Field(None, ge=0)
     cancellation_fee_cents: int | None = Field(None, ge=0)
-    seating_areas: list[str] | None = None
+    seating_areas: list[str] | None = Field(None, max_length=20)
+
+    @field_validator("seating_areas")
+    @classmethod
+    def _validate_seating_areas(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None:
+            for area in v:
+                if len(area) > 100:
+                    raise ValueError("Each seating area name must be at most 100 characters")
+        return v
 
     @model_validator(mode="after")
     def _validate(self):
@@ -59,7 +68,16 @@ class AccessRuleUpdate(BaseModel):
     deposit_amount_cents: int | None = None
     cancellation_policy_hours: int | None = None
     cancellation_fee_cents: int | None = None
-    seating_areas: list[str] | None = None
+    seating_areas: list[str] | None = Field(None, max_length=20)
+
+    @field_validator("seating_areas")
+    @classmethod
+    def _validate_seating_areas(cls, v: list[str] | None) -> list[str] | None:
+        if v is not None:
+            for area in v:
+                if len(area) > 100:
+                    raise ValueError("Each seating area name must be at most 100 characters")
+        return v
 
     @model_validator(mode="after")
     def _validate(self):

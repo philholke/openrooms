@@ -19,7 +19,7 @@ def _validate_iana_timezone(v: str) -> str:
 
 class VenueCreate(BaseModel):
     name: str = Field(..., max_length=255)
-    slug: str = Field(..., max_length=255)
+    slug: str = Field(..., min_length=3, max_length=255, pattern=r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
     address: str | None = Field(None, max_length=500)
     timezone: str = Field("UTC", max_length=100)
     phone: str | None = Field(None, max_length=50)
@@ -33,7 +33,7 @@ class VenueCreate(BaseModel):
 
 class VenueUpdate(BaseModel):
     name: str | None = Field(None, max_length=255)
-    slug: str | None = Field(None, max_length=255)
+    slug: str | None = Field(None, min_length=3, max_length=255, pattern=r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
     address: str | None = Field(None, max_length=500)
     timezone: str | None = Field(None, max_length=100)
     phone: str | None = Field(None, max_length=50)

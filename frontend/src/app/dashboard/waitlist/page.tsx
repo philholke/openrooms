@@ -38,11 +38,26 @@ export default function WaitlistPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let delay = 15_000;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const poll = async () => {
+      try {
+        await fetchEntries(controller.signal);
+        delay = 15_000; // reset on success
+      } catch {
+        delay = Math.min(delay * 1.5, 300_000); // backoff, cap 5 min
+      }
+      if (!controller.signal.aborted) {
+        timer = setTimeout(poll, delay);
+      }
+    };
+
     fetchEntries(controller.signal);
-    const interval = setInterval(() => fetchEntries(controller.signal), 15_000);
+    timer = setTimeout(poll, delay);
     return () => {
       controller.abort();
-      clearInterval(interval);
+      clearTimeout(timer);
     };
   }, [fetchEntries]);
 

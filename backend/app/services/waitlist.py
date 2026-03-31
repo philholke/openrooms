@@ -117,6 +117,19 @@ async def update_waitlist_entry(
     data: WaitlistEntryUpdate,
 ) -> WaitlistEntryRead:
     """Update a waitlist entry — status transitions, notes, quoted wait."""
+    # Acquire row lock to prevent concurrent status transition races
+    # (mirrors the FOR UPDATE pattern used in reservation status transitions).
+    lock_result = await db.execute(
+        select(WaitlistEntry)
+        .where(
+            WaitlistEntry.id == entry_id,
+            WaitlistEntry.venue_id == venue_id,
+        )
+        .with_for_update()
+    )
+    if lock_result.scalar_one_or_none() is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Waitlist entry not found")
+
     result = await db.execute(
         _base_query().where(
             WaitlistEntry.id == entry_id,
@@ -164,6 +177,18 @@ async def seat_from_waitlist(
 
     Returns (updated_entry, reservation_dict_or_None).
     """
+    # Acquire row lock to prevent concurrent seating races.
+    lock_result = await db.execute(
+        select(WaitlistEntry)
+        .where(
+            WaitlistEntry.id == entry_id,
+            WaitlistEntry.venue_id == venue_id,
+        )
+        .with_for_update()
+    )
+    if lock_result.scalar_one_or_none() is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Waitlist entry not found")
+
     result = await db.execute(
         _base_query().where(
             WaitlistEntry.id == entry_id,

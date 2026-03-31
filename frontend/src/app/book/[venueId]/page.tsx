@@ -50,11 +50,13 @@ export default function BookingWidget() {
 
   // Load venue info
   useEffect(() => {
+    const controller = new AbortController();
     setVenueLoading(true);
     publicFetch<Venue>(`/venues/${venueId}`)
-      .then(setVenue)
-      .catch(() => setVenueError("Venue not found"))
-      .finally(() => setVenueLoading(false));
+      .then((v) => { if (!controller.signal.aborted) setVenue(v); })
+      .catch(() => { if (!controller.signal.aborted) setVenueError("Venue not found"); })
+      .finally(() => { if (!controller.signal.aborted) setVenueLoading(false); });
+    return () => controller.abort();
   }, [venueId]);
 
   // Fetch availability

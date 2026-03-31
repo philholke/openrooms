@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.7.7 — Pre-Phase 3 Quality Review Round 5 (2026-03-31)
 ### 0.7.6 — Pre-Phase 3 Quality Review Round 4 (2026-03-31)
 ### 0.7.5 — Pre-Phase 3 Quality Review Round 3 (2026-03-31)
 ### 0.7.4 — Pre-Phase 3 Quality Review Round 2 (2026-03-31)
@@ -17,6 +18,34 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.7 — Pre-Phase 3 Quality Review Round 5
+
+**Date**: 2026-03-31
+
+Fifth quality review pass addressing 12 findings (3 high, 5 medium, 4 low) across backend, frontend, and infrastructure. Focuses on data integrity constraints, waitlist concurrency, and frontend resilience. Full details in [`docs/completions/pre-phase-3-quality-review-5-completion.md`](completions/pre-phase-3-quality-review-5-completion.md).
+
+### Backend (8 fixes)
+- **Waitlist FOR UPDATE locks** — `update_waitlist_entry` and `seat_from_waitlist` now acquire row-level locks before status transitions, matching the reservation locking pattern
+- **Org slug partial unique index** — soft-deleted orgs no longer block slug reuse (mirrors users.email fix from 0003)
+- **DB CHECK constraints** — survey ratings (1-5), table capacity (min <= max), access rule time/date ordering, reservation/waitlist status enums
+- **Slug format validation** — regex `^[a-z0-9]([a-z0-9-]*[a-z0-9])?$` on all org/venue slug fields
+- **FK indexes** — `users.org_id`, `tags.org_id`, `guest_profiles.org_id`, `guest_visits.guest_id`, `guest_visits.venue_id`
+- **Seating areas validation** — max 20 items, max 100 chars per item on access rule seating_areas
+- **LoginRequest password min_length** — consistent with RegisterRequest (min_length=8)
+
+### Frontend (3 fixes)
+- **Booking widget AbortController** — venue fetch useEffect now cleans up on unmount/dependency change
+- **Booking widget ErrorBoundary** — new layout wrapping the widget in the existing ErrorBoundary component
+- **Polling exponential backoff** — reservations and waitlist pages now back off on failure (1.5x multiplier, 5min cap) instead of fixed-interval polling
+
+### Infrastructure (1 fix)
+- **Frontend prod healthcheck** — `docker-compose.prod.yml` frontend service now has full healthcheck with `start_period: 15s`
+
+### Migration
+- `0005_data_integrity_hardening` — org slug partial index, 10 CHECK constraints, 5 FK indexes
 
 ---
 

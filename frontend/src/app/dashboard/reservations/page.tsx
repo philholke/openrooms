@@ -55,11 +55,26 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let delay = 30_000;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const poll = async () => {
+      try {
+        await fetchReservations(controller.signal);
+        delay = 30_000; // reset on success
+      } catch {
+        delay = Math.min(delay * 1.5, 300_000); // backoff, cap 5 min
+      }
+      if (!controller.signal.aborted) {
+        timer = setTimeout(poll, delay);
+      }
+    };
+
     fetchReservations(controller.signal);
-    const interval = setInterval(() => fetchReservations(controller.signal), 30_000);
+    timer = setTimeout(poll, delay);
     return () => {
       controller.abort();
-      clearInterval(interval);
+      clearTimeout(timer);
     };
   }, [fetchReservations]);
 
