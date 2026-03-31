@@ -26,7 +26,7 @@ async def check_availability(
     request: Request,
     venue_id: uuid.UUID,
     date: date = Query(..., description="Target date (YYYY-MM-DD)"),
-    party_size: int = Query(2, ge=1, le=20, description="Number of guests"),
+    party_size: int = Query(2, ge=1, le=100, description="Number of guests"),
     db: AsyncSession = Depends(get_db),
 ):
     """

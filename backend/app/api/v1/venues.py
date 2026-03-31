@@ -71,7 +71,11 @@ async def create_venue(
     db: AsyncSession = Depends(get_db),
 ):
     existing = await db.execute(
-        select(Venue).where(Venue.org_id == org.id, Venue.slug == body.slug)
+        select(Venue).where(
+            Venue.org_id == org.id,
+            Venue.slug == body.slug,
+            Venue.is_active.is_(True),
+        )
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, "Venue slug already exists in this org")

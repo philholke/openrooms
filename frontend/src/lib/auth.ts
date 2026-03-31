@@ -6,6 +6,7 @@ import React, {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { api, storeTokens as storeTokenPair, clearTokens } from "./api";
@@ -52,16 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [fetchUser]);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const res = await api.post<TokenResponse>("/auth/login", {
       email,
       password,
     });
     storeTokenPair(res.data.access_token, res.data.refresh_token);
     await fetchUser();
-  };
+  }, [fetchUser]);
 
-  const register = async (data: {
+  const register = useCallback(async (data: {
     org_name: string;
     org_slug: string;
     full_name: string;
@@ -71,16 +72,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.post<TokenResponse>("/auth/register", data);
     storeTokenPair(res.data.access_token, res.data.refresh_token);
     await fetchUser();
-  };
+  }, [fetchUser]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     clearTokens();
     setUser(null);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout }),
+    [user, loading, login, register, logout]
+  );
 
   return React.createElement(
     AuthContext.Provider,
-    { value: { user, loading, login, register, logout } },
+    { value },
     children
   );
 }

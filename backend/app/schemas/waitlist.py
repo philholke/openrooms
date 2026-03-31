@@ -29,6 +29,10 @@ class WaitlistEntryUpdate(BaseModel):
     quoted_wait_minutes: int | None = Field(None, ge=0, le=480)
 
 
+class WaitlistSeatRequest(BaseModel):
+    table_id: uuid.UUID | None = None
+
+
 class WaitlistEntryRead(BaseModel):
     id: uuid.UUID
     venue_id: uuid.UUID

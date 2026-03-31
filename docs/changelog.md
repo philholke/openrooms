@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.7.5 — Pre-Phase 3 Quality Review Round 3 (2026-03-31)
 ### 0.7.4 — Pre-Phase 3 Quality Review Round 2 (2026-03-31)
 ### 0.7.3 — Pre-Phase 3 Quality Review (2026-03-31)
 ### 0.7.2 — Post-Phase 2 Production Readiness (2026-03-31)
@@ -15,6 +16,43 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.5 — Pre-Phase 3 Quality Review Round 3
+
+**Date**: 2026-03-31
+
+Third quality review pass addressing 23 findings (1 critical, 8 high, 14 medium) across backend, frontend, and infrastructure. Full details in [`docs/completions/pre-phase-3-quality-review-3-completion.md`](completions/pre-phase-3-quality-review-3-completion.md).
+
+### Backend (12 fixes)
+- **CRITICAL: Guest upsert SAVEPOINT** — `get_or_create_guest` now uses `begin_nested()` instead of `db.rollback()`, preserving the outer transaction and FOR UPDATE locks
+- **Survey IDOR prevention** — `create_survey` validates `guest_id` and `reservation_id` belong to the correct org/venue
+- **Health endpoint info leak** — `/health/ready` no longer returns exception details; logs server-side instead
+- **Cancel reservation row lock** — `cancel_reservation` now acquires `FOR UPDATE` lock, matching `update_status`
+- **`seat_from_waitlist` endpoint** — new `POST /waitlist/{entry_id}/seat` wires the existing service function to an API route
+- **Cross-venue table validation** — `update_reservation` now verifies the table belongs to the reservation's venue via FloorPlan join
+- **LIKE wildcard escaping** — guest name search now escapes `%`, `_`, `\` in LIKE patterns
+- **Availability party_size cap** — raised from 20 to 100 to match configurable access rule bounds
+- **AccessRule schema bounds** — added `ge`/`le` constraints on all numeric fields; `party_size` capped at 100 on reservation schemas
+- **Deterministic SQL** — converted set literals in `.in_()` calls to lists for consistent prepared statement caching
+- **Slug uniqueness `is_active` filter** — org update and venue creation now exclude soft-deleted entities
+- **alembic.ini credentials** — replaced hardcoded dev credentials with a placeholder
+
+### Frontend (10 fixes)
+- **401 handler fall-through** — added explicit `throw` after redirect to prevent error flash
+- **Modal focus trap + scroll lock** — keyboard focus cycles within the dialog; body scroll disabled when open; unique `aria-labelledby` IDs via `useId()`
+- **Stale reservation modal** — detail modal now syncs with latest polled data instead of showing click-time snapshot
+- **AuthProvider stable refs** — `login`/`register`/`logout` wrapped in `useCallback`, context value in `useMemo`; same for VenueProvider
+- **`today()` timezone fix** — now uses local date components instead of UTC-based `toISOString()`
+- **Waitlist modal form reset** — form state resets on modal open, not just on successful submission
+- **Refresh button signal fix** — both pages now use `() => fetch()` instead of passing MouseEvent as AbortSignal
+- **Card keyboard accessibility** — interactive cards get `role="button"`, `tabIndex`, and Enter/Space handlers
+- **Input unique IDs** — replaced label-derived IDs with React's `useId()` hook
+- **Booking widget loading state** — removed wasteful pre-warm fetch; added loading indicator; fixed non-null assertion
+
+### Infrastructure (1 fix)
+- **Production port exposure** — `docker-compose.prod.yml` now clears port mappings for backend (8000) and frontend (3000)
 
 ---
 

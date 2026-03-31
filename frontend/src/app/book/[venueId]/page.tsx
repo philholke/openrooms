@@ -46,14 +46,15 @@ export default function BookingWidget() {
   const [error, setError] = useState("");
   const [confirmation, setConfirmation] = useState<Reservation | null>(null);
 
+  const [venueLoading, setVenueLoading] = useState(true);
+
   // Load venue info
   useEffect(() => {
-    publicFetch<Venue>(`/venues/${venueId}/availability?date=${today()}&party_size=2`)
-      .catch(() => null); // pre-warm
-
+    setVenueLoading(true);
     publicFetch<Venue>(`/venues/${venueId}`)
       .then(setVenue)
-      .catch(() => setVenueError("Venue not found"));
+      .catch(() => setVenueError("Venue not found"))
+      .finally(() => setVenueLoading(false));
   }, [venueId]);
 
   // Fetch availability
@@ -131,6 +132,14 @@ export default function BookingWidget() {
   }
 
   // ── Loading / error states ──
+  if (venueLoading) {
+    return (
+      <WidgetShell>
+        <p className="text-center text-gray-400 py-12">Loading...</p>
+      </WidgetShell>
+    );
+  }
+
   if (venueError) {
     return (
       <WidgetShell>
@@ -439,7 +448,7 @@ export default function BookingWidget() {
               })}
             </p>
             <p>
-              {formatTime(selectedSlot!.time)} &middot; {partySize} guest
+              {selectedSlot && formatTime(selectedSlot.time)} &middot; {partySize} guest
               {partySize !== 1 ? "s" : ""}
             </p>
             <p>{venue?.name}</p>

@@ -34,6 +34,8 @@ class ReservationCreate(BaseModel):
     def _party_size_positive(cls, v: int) -> int:
         if v < 1:
             raise ValueError("party_size must be >= 1")
+        if v > 100:
+            raise ValueError("party_size must be <= 100")
         return v
 
 
@@ -50,6 +52,8 @@ class ReservationUpdate(BaseModel):
     def _party_size_positive(cls, v: int | None) -> int | None:
         if v is not None and v < 1:
             raise ValueError("party_size must be >= 1")
+        if v is not None and v > 100:
+            raise ValueError("party_size must be <= 100")
         return v
 
 

@@ -102,7 +102,7 @@ async def list_waitlist(
     stmt = _base_query().where(WaitlistEntry.venue_id == venue_id)
 
     if active_only:
-        stmt = stmt.where(WaitlistEntry.status.in_({"waiting", "notified"}))
+        stmt = stmt.where(WaitlistEntry.status.in_(["waiting", "notified"]))
 
     stmt = stmt.order_by(WaitlistEntry.check_in_time.asc())
     result = await db.execute(stmt)

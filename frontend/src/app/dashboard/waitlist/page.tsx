@@ -71,7 +71,7 @@ export default function WaitlistPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-gray-900">Waitlist</h1>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" size="sm" onClick={fetchEntries}>
+          <Button variant="secondary" size="sm" onClick={() => fetchEntries()}>
             Refresh
           </Button>
           <Button size="sm" onClick={() => setShowAdd(true)}>
@@ -208,16 +208,26 @@ function AddToWaitlistModal({
   venueId: string;
   onAdded: () => void;
 }) {
-  const [form, setForm] = useState({
+  const initialForm = {
     first_name: "",
     last_name: "",
     phone: "",
     party_size: 2,
     quoted_wait_minutes: "",
     notes: "",
-  });
+  };
+  const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Reset form state when modal opens
+  useEffect(() => {
+    if (open) {
+      setForm(initialForm);
+      setError("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

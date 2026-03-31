@@ -20,7 +20,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const update = (field: string, value: string) =>
+  const update = (field: keyof typeof form, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
 
   // Auto-generate slug from org name

@@ -23,7 +23,7 @@ from app.models.venue import Venue
 from app.schemas.availability import AvailableSlot
 
 # Reservation statuses that count as "occupying" a slot.
-ACTIVE_STATUSES = {"pending", "confirmed", "arrived", "partially_arrived", "seated"}
+ACTIVE_STATUSES = ["pending", "confirmed", "arrived", "partially_arrived", "seated"]
 
 
 async def get_available_slots(

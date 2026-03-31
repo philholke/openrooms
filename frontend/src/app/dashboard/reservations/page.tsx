@@ -86,7 +86,7 @@ export default function ReservationsPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={fetchReservations}
+            onClick={() => fetchReservations()}
           >
             Refresh
           </Button>
@@ -192,13 +192,13 @@ export default function ReservationsPage() {
         {total} reservation{total !== 1 ? "s" : ""}
       </p>
 
-      {/* Detail modal */}
+      {/* Detail modal — sync with latest data from polling */}
       {selected && (
         <ReservationDetail
-          reservation={selected}
+          reservation={reservations.find((r) => r.id === selected.id) ?? selected}
           open={!!selected}
           onClose={() => setSelected(null)}
-          onUpdated={fetchReservations}
+          onUpdated={() => fetchReservations()}
         />
       )}
     </div>

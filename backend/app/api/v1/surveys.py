@@ -58,7 +58,7 @@ async def create_survey(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "venue_id in body must match the path",
         )
-    survey = await survey_service.create_survey(db, body)
+    survey = await survey_service.create_survey(db, body, org.id)
     return ok(survey)
 
 

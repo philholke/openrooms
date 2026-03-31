@@ -12,15 +12,15 @@ class AccessRuleCreate(BaseModel):
     start_time: time
     end_time: time
     slot_interval_minutes: int = 30
-    min_party_size: int = 1
-    max_party_size: int = 20
-    max_covers_per_slot: int | None = None
-    advance_booking_days: int = 30
-    cutoff_minutes: int = 120
+    min_party_size: int = Field(1, ge=1, le=100)
+    max_party_size: int = Field(20, ge=1, le=100)
+    max_covers_per_slot: int | None = Field(None, ge=1)
+    advance_booking_days: int = Field(30, ge=1, le=365)
+    cutoff_minutes: int = Field(120, ge=0, le=1440)
     require_deposit: bool = False
-    deposit_amount_cents: int | None = None
-    cancellation_policy_hours: int | None = None
-    cancellation_fee_cents: int | None = None
+    deposit_amount_cents: int | None = Field(None, ge=0)
+    cancellation_policy_hours: int | None = Field(None, ge=0)
+    cancellation_fee_cents: int | None = Field(None, ge=0)
     seating_areas: list[str] | None = None
 
     @model_validator(mode="after")

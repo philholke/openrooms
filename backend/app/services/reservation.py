@@ -102,7 +102,7 @@ async def create_reservation(
         .where(
             Reservation.venue_id == venue_id,
             Reservation.date == data.date,
-            Reservation.status.in_({"pending", "confirmed", "arrived", "partially_arrived", "seated"}),
+            Reservation.status.in_(["pending", "confirmed", "arrived", "partially_arrived", "seated"]),
         )
         .with_for_update()
     )
@@ -197,7 +197,9 @@ async def list_reservations(
         if statuses:
             stmt = stmt.where(Reservation.status.in_(statuses))
         if search:
-            pattern = f"%{search}%"
+            # Escape LIKE wildcards to prevent pattern injection
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{escaped}%"
             stmt = stmt.where(
                 Reservation.guest.has(
                     GuestProfile.first_name.ilike(pattern)
@@ -265,17 +267,25 @@ async def update_reservation(
 
     updates = data.model_dump(exclude_unset=True)
 
-    # ── Validate table capacity ──
-    # When table_id or party_size changes, ensure the party fits the table.
+    # ── Validate table capacity and venue ownership ──
+    # When table_id or party_size changes, ensure the party fits the table
+    # and the table belongs to this reservation's venue.
     eff_table_id = updates.get("table_id", reservation.table_id)
     eff_party_size = updates.get("party_size", reservation.party_size)
     if eff_table_id and ("table_id" in updates or "party_size" in updates):
+        from app.models.floor_plan import FloorPlan
         table_result = await db.execute(
-            select(Table).where(Table.id == eff_table_id, Table.is_active.is_(True))
+            select(Table)
+            .join(FloorPlan, Table.floor_plan_id == FloorPlan.id)
+            .where(
+                Table.id == eff_table_id,
+                Table.is_active.is_(True),
+                FloorPlan.venue_id == venue_id,
+            )
         )
         table = table_result.scalar_one_or_none()
         if table is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Table not found")
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Table not found in this venue")
         if eff_party_size < table.min_capacity or eff_party_size > table.max_capacity:
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
@@ -387,6 +397,13 @@ async def cancel_reservation(
     reason: str | None = None,
 ) -> ReservationRead:
     """Cancel a reservation — convenience wrapper around update_status."""
+    # Lock the row to prevent concurrent cancel/status races
+    await db.execute(
+        select(Reservation.id)
+        .where(Reservation.id == reservation_id)
+        .with_for_update()
+    )
+
     result = await db.execute(
         _base_query().where(
             Reservation.id == reservation_id,

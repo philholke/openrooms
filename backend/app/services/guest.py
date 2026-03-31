@@ -62,11 +62,13 @@ async def get_or_create_guest(
     )
     db.add(guest)
     try:
-        await db.flush()
+        # Use a SAVEPOINT so that only this insert rolls back on conflict,
+        # preserving the outer transaction (and any FOR UPDATE locks).
+        async with db.begin_nested():
+            await db.flush()
     except IntegrityError:
-        # Concurrent insert with same (org_id, email) — roll back the
-        # failed insert and fetch the winner.
-        await db.rollback()
+        # Concurrent insert with same (org_id, email) — the SAVEPOINT was
+        # rolled back; the outer transaction is still intact.
         result = await db.execute(
             select(GuestProfile).where(
                 GuestProfile.org_id == org_id,

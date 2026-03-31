@@ -24,6 +24,7 @@ services:
           memory: 512M
 
   backend:
+    ports: []  # Do not expose backend directly in production — use a reverse proxy
     restart: always
     volumes: []  # Remove dev volume mount
     environment:
@@ -48,6 +49,7 @@ services:
           memory: 512M
 
   frontend:
+    ports: []  # Do not expose frontend directly in production — use a reverse proxy
     restart: always
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}

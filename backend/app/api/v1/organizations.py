@@ -29,7 +29,9 @@ async def update_org(
     if body.slug is not None and body.slug != org.slug:
         existing = await db.execute(
             select(Organization).where(
-                Organization.slug == body.slug, Organization.id != org.id
+                Organization.slug == body.slug,
+                Organization.id != org.id,
+                Organization.is_active.is_(True),
             )
         )
         if existing.scalar_one_or_none():

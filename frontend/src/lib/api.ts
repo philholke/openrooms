@@ -116,6 +116,7 @@ async function request<T>(
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
       window.location.assign("/login");
     }
+    throw new ApiError(401, "Session expired");
   }
 
   if (!res.ok) {

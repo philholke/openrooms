@@ -9,7 +9,7 @@ from app.core.dependencies import get_current_org, require_role
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.envelope import Envelope, ok
-from app.schemas.waitlist import WaitlistEntryCreate, WaitlistEntryRead, WaitlistEntryUpdate
+from app.schemas.waitlist import WaitlistEntryCreate, WaitlistEntryRead, WaitlistEntryUpdate, WaitlistSeatRequest
 from app.services import waitlist as waitlist_service
 from app.api.v1.venues import _get_venue_or_404
 
@@ -78,6 +78,35 @@ async def update_waitlist_entry(
         db, entry_id, row.venue_id, body
     )
     return ok(entry)
+
+
+@router.post(
+    "/waitlist/{entry_id}/seat",
+    response_model=Envelope[WaitlistEntryRead],
+)
+async def seat_from_waitlist(
+    entry_id: uuid.UUID,
+    body: WaitlistSeatRequest | None = None,
+    org: Organization = Depends(get_current_org),
+    _user: User = Depends(require_role("staff")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Seat a waitlist guest, optionally assigning a table and creating a walk-in reservation."""
+    from app.models.reservation import WaitlistEntry
+
+    result = await db.execute(
+        select(WaitlistEntry.venue_id).where(WaitlistEntry.id == entry_id)
+    )
+    row = result.one_or_none()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Waitlist entry not found")
+    await _get_venue_or_404(db, row.venue_id, org.id)
+
+    table_id = body.table_id if body else None
+    entry_read, _reservation_data = await waitlist_service.seat_from_waitlist(
+        db, entry_id, row.venue_id, table_id=table_id
+    )
+    return ok(entry_read)
 
 
 @router.delete(

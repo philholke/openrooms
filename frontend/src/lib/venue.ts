@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { api } from "./api";
@@ -57,14 +58,19 @@ export function VenueProvider({ children }: { children: ReactNode }) {
     fetchVenues();
   }, [fetchVenues]);
 
-  const setCurrent = (venue: Venue) => {
+  const setCurrent = useCallback((venue: Venue) => {
     setCurrentState(venue);
     localStorage.setItem("selected_venue_id", venue.id);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ venues, current, setCurrent, loading, error, refresh: fetchVenues }),
+    [venues, current, setCurrent, loading, error, fetchVenues]
+  );
 
   return React.createElement(
     VenueContext.Provider,
-    { value: { venues, current, setCurrent, loading, error, refresh: fetchVenues } },
+    { value },
     children
   );
 }
