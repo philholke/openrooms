@@ -28,11 +28,15 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
     <div
       ref={overlayRef}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      role="presentation"
       onClick={(e) => {
         if (e.target === overlayRef.current) onClose();
       }}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? "modal-title" : undefined}
         className={cn(
           "w-full max-w-lg rounded-xl bg-white p-6 shadow-xl",
           className
@@ -40,10 +44,10 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
       >
         {title && (
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+            <h2 id="modal-title" className="text-lg font-semibold text-gray-900">{title}</h2>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label="Close dialog"
               className="text-gray-400 hover:text-gray-600"
             >
               &times;

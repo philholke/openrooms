@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.7.2 — Post-Phase 2 Production Readiness (2026-03-31)
 ### 0.7.1 — Phase 2H: Code Quality & Security Hardening (2026-03-31)
 ### 0.7.0 — Phase 2G: Booking Widget (2026-03-31)
 ### 0.6.0 — Phase 2F: Staff Dashboard (Frontend) (2026-03-31)
@@ -12,6 +13,40 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.2 — Post-Phase 2 Production Readiness
+
+**Date**: 2026-03-31
+
+Full-stack production-readiness pass addressing 16 findings from comprehensive code review. Full details in [`docs/completions/post-phase-2-fixes-completion.md`](completions/post-phase-2-fixes-completion.md).
+
+### Security (Critical)
+- SECRET_KEY validation — app refuses to start in production with default key; warns in development
+- Restricted CORS `allow_methods` and `allow_headers` from wildcards to explicit lists
+- Added security headers middleware: `X-Content-Type-Options`, `X-Frame-Options`, `X-XSS-Protection`, `Referrer-Policy`
+- Removed `cancel_token` from `ReservationRead` API responses (was leaking IDOR protection token)
+
+### Data Integrity
+- Added `IntegrityError` handling on registration and user creation (concurrent duplicate emails → 409, not 500)
+- Soft-deleted users no longer block email reuse (uniqueness checks now filter by `is_active`)
+
+### API Consistency
+- Global `HTTPException` handler wraps all errors in the `{ data, meta, errors }` envelope format
+
+### Observability
+- Added structured audit logging: auth events (register, login success/failure), reservation lifecycle (create, status change, cancel), waitlist operations (add, status change)
+
+### Infrastructure
+- Backend Dockerfile: multi-stage build (no gcc in final image), non-root `appuser`
+- Added healthchecks for backend (`/health`) and frontend containers
+- Created `.dockerignore` for both services
+- Pinned dependency version ranges (`>=X,<Y`) in `requirements.txt`
+
+### Frontend
+- Client-side email/phone validation on booking widget before submission
+- Accessibility: `role="dialog"` + `aria-modal` on Modal, `role="tablist/tab"` + `aria-selected` on status tabs, `role="radiogroup/radio"` + `aria-checked` on party size selectors, `role="alert"` on all error messages, `aria-label` + focus ring on table rows
 
 ---
 

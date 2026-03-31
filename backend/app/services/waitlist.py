@@ -2,6 +2,7 @@
 Waitlist service — manages walk-in guest flow from check-in to seating.
 """
 
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -9,6 +10,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+
+logger = logging.getLogger(__name__)
 
 from app.models.reservation import Reservation, WaitlistEntry
 from app.schemas.guest import GuestRead
@@ -79,6 +82,8 @@ async def add_to_waitlist(
     db.add(entry)
     await db.flush()
 
+    logger.info("Waitlist entry added: id=%s venue=%s party=%d", entry.id, venue_id, data.party_size)
+
     result = await db.execute(
         _base_query().where(WaitlistEntry.id == entry.id)
     )
@@ -127,6 +132,8 @@ async def update_waitlist_entry(
     if "status" in update_data:
         new_status = update_data["status"]
         _validate_transition(entry.status, new_status)
+
+        logger.info("Waitlist %s status: %s -> %s", entry_id, entry.status, new_status)
 
         # Side effect: seated → record seated_time
         if new_status == "seated":

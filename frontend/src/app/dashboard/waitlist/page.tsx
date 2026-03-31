@@ -77,7 +77,7 @@ export default function WaitlistPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+        <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
       )}
@@ -253,7 +253,7 @@ function AddToWaitlistModal({
     <Modal open={open} onClose={onClose} title="Add to Waitlist">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+          <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -285,11 +285,14 @@ function AddToWaitlistModal({
           <label className="block text-sm font-medium text-gray-700">
             Party Size
           </label>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Party size">
             {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
               <button
                 key={n}
                 type="button"
+                role="radio"
+                aria-checked={form.party_size === n}
+                aria-label={`${n} guest${n !== 1 ? "s" : ""}`}
                 onClick={() => setForm((f) => ({ ...f, party_size: n }))}
                 className={`h-9 w-9 rounded-lg text-sm font-medium transition-colors ${
                   form.party_size === n

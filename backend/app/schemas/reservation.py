@@ -77,7 +77,6 @@ class ReservationRead(BaseModel):
     notes: str | None
     special_requests: str | None
     cancelled_at: datetime | None
-    cancel_token: str | None = None
     created_at: datetime
     updated_at: datetime
 

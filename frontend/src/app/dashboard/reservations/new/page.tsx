@@ -109,7 +109,7 @@ export default function NewReservationPage() {
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+        <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
       )}
@@ -129,10 +129,13 @@ export default function NewReservationPage() {
             <label className="block text-sm font-medium text-gray-700">
               Party Size
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Party size">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
                 <button
                   key={n}
+                  role="radio"
+                  aria-checked={partySize === n}
+                  aria-label={`${n} guest${n !== 1 ? "s" : ""}`}
                   onClick={() => setPartySize(n)}
                   className={`h-10 w-10 rounded-lg text-sm font-medium transition-colors ${
                     partySize === n

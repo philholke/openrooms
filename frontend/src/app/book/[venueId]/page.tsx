@@ -97,9 +97,20 @@ export default function BookingWidget() {
     }
   }, [venueId, date, partySize]);
 
+  // Client-side validation
+  const validateGuest = (): string | null => {
+    if (!guest.first_name.trim() || !guest.last_name.trim()) return "Name is required.";
+    if (!guest.email.trim()) return "Email is required.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guest.email)) return "Please enter a valid email address.";
+    if (guest.phone && !/^[+\d\s()-]{7,20}$/.test(guest.phone)) return "Please enter a valid phone number.";
+    return null;
+  };
+
   // Submit reservation
   const handleBook = async () => {
     if (!selectedSlot) return;
+    const validationError = validateGuest();
+    if (validationError) { setError(validationError); return; }
     setError("");
     setLoading(true);
     try {
@@ -161,7 +172,7 @@ export default function BookingWidget() {
       )}
 
       {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+        <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
       )}
@@ -186,10 +197,13 @@ export default function BookingWidget() {
             <label className="block text-sm font-medium text-gray-700">
               Party Size
             </label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-2" role="radiogroup" aria-label="Party size">
               {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
                 <button
                   key={n}
+                  role="radio"
+                  aria-checked={partySize === n}
+                  aria-label={`${n} guest${n !== 1 ? "s" : ""}`}
                   onClick={() => setPartySize(n)}
                   className={cn(
                     "rounded-lg py-2.5 text-sm font-medium transition-colors",
@@ -348,7 +362,12 @@ export default function BookingWidget() {
           </div>
 
           <button
-            onClick={() => setStep("confirm")}
+            onClick={() => {
+              const err = validateGuest();
+              if (err) { setError(err); return; }
+              setError("");
+              setStep("confirm");
+            }}
             disabled={!guest.first_name || !guest.last_name || !guest.email}
             className="w-full rounded-lg py-3 text-sm font-semibold text-white transition-opacity disabled:opacity-50"
             style={primaryStyle}

@@ -98,10 +98,12 @@ export default function ReservationsPage() {
       </div>
 
       {/* Status tabs */}
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-gray-200" role="tablist" aria-label="Reservation status filters">
         {STATUS_TABS.map((tab, i) => (
           <button
             key={tab.label}
+            role="tab"
+            aria-selected={i === activeTab}
             onClick={() => setActiveTab(i)}
             className={cn(
               "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
@@ -117,7 +119,7 @@ export default function ReservationsPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+        <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
           {error}
         </div>
       )}
@@ -155,7 +157,8 @@ export default function ReservationsPage() {
                   }}
                   tabIndex={0}
                   role="button"
-                  className="cursor-pointer hover:bg-gray-50 transition-colors"
+                  aria-label={`Reservation for ${r.guest ? `${r.guest.first_name} ${r.guest.last_name}` : "unknown guest"} at ${r.time}`}
+                  className="cursor-pointer hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
                 >
                   <td className="px-4 py-3 font-medium">
                     {formatTime(r.time)}

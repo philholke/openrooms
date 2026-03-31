@@ -99,7 +99,7 @@ async function request<T>(
     // Refresh failed — clear tokens and redirect to login
     clearTokens();
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-      window.location.href = "/login";
+      window.location.assign("/login");
     }
   }
 

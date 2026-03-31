@@ -1,7 +1,9 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -11,6 +13,8 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.envelope import Envelope, PaginatedEnvelope, ok, paginated
 from app.schemas.user import UserCreate, UserRead, UserUpdate
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -59,20 +63,28 @@ async def create_user(
     _user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ):
-    existing = await db.execute(select(User).where(User.email == body.email))
+    existing = await db.execute(
+        select(User).where(User.email == body.email, User.is_active.is_(True))
+    )
     if existing.scalar_one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
 
-    user = User(
-        org_id=org.id,
-        email=body.email,
-        hashed_password=hash_password(body.password),
-        full_name=body.full_name,
-        role=body.role,
-    )
-    db.add(user)
-    await db.flush()
-    await db.refresh(user)
+    try:
+        user = User(
+            org_id=org.id,
+            email=body.email,
+            hashed_password=hash_password(body.password),
+            full_name=body.full_name,
+            role=body.role,
+        )
+        db.add(user)
+        await db.flush()
+        await db.refresh(user)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
+
+    logger.info("User %s created in org %s", user.email, org.id)
     return ok(UserRead.model_validate(user))
 
 

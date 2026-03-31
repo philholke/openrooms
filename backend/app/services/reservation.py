@@ -2,6 +2,7 @@
 Reservation service — CRUD, status machine, and side-effect triggers.
 """
 
+import logging
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -10,6 +11,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
+
+logger = logging.getLogger(__name__)
 
 from app.models.guest import GuestVisit
 from app.models.reservation import AccessRule, Reservation
@@ -151,6 +154,11 @@ async def create_reservation(
     db.add(reservation)
     await db.flush()
 
+    logger.info(
+        "Reservation created: id=%s venue=%s date=%s time=%s party=%d source=%s",
+        reservation.id, venue_id, data.date, data.time, data.party_size, data.source,
+    )
+
     # Reload with relationships
     result = await db.execute(
         _base_query().where(Reservation.id == reservation.id)
@@ -291,6 +299,9 @@ async def update_status(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Reservation not found")
 
     validate_transition(reservation.status, new_status)
+    logger.info(
+        "Reservation %s status: %s -> %s", reservation_id, reservation.status, new_status,
+    )
     reservation.status = new_status
 
     # ── Side effects ──
@@ -334,6 +345,7 @@ async def cancel_reservation(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Reservation not found")
 
     validate_transition(reservation.status, "cancelled")
+    logger.info("Reservation %s cancelled (reason: %s)", reservation_id, reason or "none")
     reservation.status = "cancelled"
     reservation.cancelled_at = datetime.now(timezone.utc)
     if reason:
