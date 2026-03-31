@@ -1,7 +1,9 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +13,7 @@ from app.schemas.availability import AvailabilityResponse
 from app.schemas.envelope import Envelope, ok
 from app.services.availability import get_available_slots
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(tags=["availability"])
 
 
@@ -18,7 +21,9 @@ router = APIRouter(tags=["availability"])
     "/venues/{venue_id}/availability",
     response_model=Envelope[AvailabilityResponse],
 )
+@limiter.limit("30/minute")
 async def check_availability(
+    request: Request,
     venue_id: uuid.UUID,
     date: date = Query(..., description="Target date (YYYY-MM-DD)"),
     party_size: int = Query(2, ge=1, le=20, description="Number of guests"),

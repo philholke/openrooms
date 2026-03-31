@@ -1,7 +1,9 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +23,7 @@ from app.schemas.reservation import (
 from app.services import reservation as reservation_service
 from app.api.v1.venues import _get_venue_or_404
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(tags=["reservations"])
 
 
@@ -81,7 +84,9 @@ async def list_reservations(
     response_model=Envelope[ReservationRead],
     status_code=status.HTTP_201_CREATED,
 )
+@limiter.limit("10/minute")
 async def create_reservation(
+    request: Request,
     venue_id: uuid.UUID,
     body: ReservationCreate,
     db: AsyncSession = Depends(get_db),

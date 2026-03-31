@@ -35,27 +35,41 @@ function clearTokens() {
   localStorage.removeItem("selected_venue_id");
 }
 
-/** Try to exchange the refresh token for a new access token. */
+// ─── Token refresh mutex ───────────────────────────────────────────────
+// Ensures only one refresh request runs at a time. Concurrent 401 retries
+// share the same promise instead of each triggering their own refresh.
+let _refreshPromise: Promise<boolean> | null = null;
+
 async function tryRefresh(): Promise<boolean> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
+  if (_refreshPromise) return _refreshPromise;
+
+  _refreshPromise = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!res.ok) return false;
+      const body = await res.json();
+      const data = body?.data;
+      if (data?.access_token && data?.refresh_token) {
+        storeTokens(data.access_token, data.refresh_token);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  })();
 
   try {
-    const res = await fetch(`${API_BASE}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-    if (!res.ok) return false;
-    const body = await res.json();
-    const data = body?.data;
-    if (data?.access_token && data?.refresh_token) {
-      storeTokens(data.access_token, data.refresh_token);
-      return true;
-    }
-    return false;
-  } catch {
-    return false;
+    return await _refreshPromise;
+  } finally {
+    _refreshPromise = null;
   }
 }
 
@@ -79,8 +93,9 @@ async function request<T>(
     headers,
   });
 
+  // 204 No Content — return a typed empty envelope
   if (res.status === 204) {
-    return { data: null as unknown as T, meta: null, errors: null };
+    return { data: null, meta: null, errors: null } as Envelope<T>;
   }
 
   let body: Record<string, unknown>;
@@ -131,8 +146,8 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  delete: <T = null>(path: string) =>
-    request<T>(path, { method: "DELETE" }),
+  delete: (path: string) =>
+    request<null>(path, { method: "DELETE" }),
 };
 
 export { ApiError };

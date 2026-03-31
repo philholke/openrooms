@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 logger = logging.getLogger(__name__)
 
@@ -131,12 +131,21 @@ async def create_reservation(
         phone=data.guest.phone,
     )
 
-    # 3. Determine initial status
+    # 3. Determine initial status — rule must still be active
     rule_result = await db.execute(
-        select(AccessRule).where(AccessRule.id == data.access_rule_id)
+        select(AccessRule).where(
+            AccessRule.id == data.access_rule_id,
+            AccessRule.is_active.is_(True),
+            AccessRule.venue_id == venue_id,
+        )
     )
     rule = rule_result.scalar_one_or_none()
-    initial_status = "pending" if (rule and rule.require_deposit) else "confirmed"
+    if rule is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Access rule is no longer available",
+        )
+    initial_status = "pending" if rule.require_deposit else "confirmed"
 
     # 4. Create reservation
     reservation = Reservation(
@@ -178,51 +187,45 @@ async def list_reservations(
     per_page: int = 25,
 ) -> tuple[list[ReservationRead], int]:
     """List reservations with filters. Returns (items, total_count)."""
-    from datetime import date as date_type
     from app.models.guest import GuestProfile
 
-    base = select(Reservation).where(Reservation.venue_id == venue_id)
-
-    if date is not None:
-        base = base.where(Reservation.date == date)
-    if statuses:
-        base = base.where(Reservation.status.in_(statuses))
-    if search:
-        pattern = f"%{search}%"
-        base = base.join(Reservation.guest).where(
-            GuestProfile.first_name.ilike(pattern)
-            | GuestProfile.last_name.ilike(pattern)
-        )
+    def _apply_filters(stmt):
+        nonlocal date, statuses, search
+        stmt = stmt.where(Reservation.venue_id == venue_id)
+        if date is not None:
+            stmt = stmt.where(Reservation.date == date)
+        if statuses:
+            stmt = stmt.where(Reservation.status.in_(statuses))
+        if search:
+            pattern = f"%{search}%"
+            stmt = stmt.where(
+                Reservation.guest.has(
+                    GuestProfile.first_name.ilike(pattern)
+                    | GuestProfile.last_name.ilike(pattern)
+                )
+            )
+        return stmt
 
     # Total count
     count_result = await db.execute(
-        select(func.count()).select_from(base.subquery())
+        _apply_filters(select(func.count(Reservation.id)))
     )
     total = count_result.scalar_one()
 
-    # Paginated + eager loaded query
+    # Paginated query — use selectinload to avoid LIMIT/joinedload interaction
+    stmt = _apply_filters(select(Reservation))
     stmt = (
-        _base_query()
-        .where(Reservation.venue_id == venue_id)
-    )
-    if date is not None:
-        stmt = stmt.where(Reservation.date == date)
-    if statuses:
-        stmt = stmt.where(Reservation.status.in_(statuses))
-    if search:
-        pattern = f"%{search}%"
-        # Already joining guest via joinedload, add filter
-        from app.models.guest import GuestProfile
-        stmt = stmt.where(
-            Reservation.guest.has(
-                GuestProfile.first_name.ilike(pattern)
-                | GuestProfile.last_name.ilike(pattern)
-            )
+        stmt.options(
+            selectinload(Reservation.guest),
+            selectinload(Reservation.table),
+            selectinload(Reservation.access_rule),
         )
-
-    stmt = stmt.order_by(Reservation.time, Reservation.id).offset((page - 1) * per_page).limit(per_page)
+        .order_by(Reservation.time, Reservation.id)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
     result = await db.execute(stmt)
-    reservations = result.unique().scalars().all()
+    reservations = result.scalars().all()
 
     return [_to_read(r) for r in reservations], total
 
@@ -260,7 +263,39 @@ async def update_reservation(
     if reservation is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Reservation not found")
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+
+    # If party_size is changing, re-validate against the slot's capacity limit
+    if "party_size" in updates and updates["party_size"] != reservation.party_size:
+        new_size = updates["party_size"]
+        if reservation.access_rule_id:
+            rule_result = await db.execute(
+                select(AccessRule).where(AccessRule.id == reservation.access_rule_id)
+            )
+            rule = rule_result.scalar_one_or_none()
+            if rule and rule.max_covers_per_slot is not None:
+                # Count other reservations in the same slot (excluding this one)
+                other_covers_result = await db.execute(
+                    select(func.coalesce(func.sum(Reservation.party_size), 0)).where(
+                        Reservation.venue_id == venue_id,
+                        Reservation.date == reservation.date,
+                        Reservation.time == reservation.time,
+                        Reservation.access_rule_id == reservation.access_rule_id,
+                        Reservation.id != reservation.id,
+                        Reservation.status.in_(
+                            {"pending", "confirmed", "arrived", "partially_arrived", "seated"}
+                        ),
+                    )
+                )
+                other_covers = other_covers_result.scalar_one()
+                if other_covers + new_size > rule.max_covers_per_slot:
+                    raise HTTPException(
+                        status.HTTP_409_CONFLICT,
+                        f"New party size ({new_size}) would exceed slot capacity "
+                        f"({rule.max_covers_per_slot} covers, {other_covers} already booked)",
+                    )
+
+    for field, value in updates.items():
         setattr(reservation, field, value)
 
     await db.flush()

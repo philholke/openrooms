@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { VenueProvider, useVenue } from "@/lib/venue";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const NAV_ITEMS = [
   { href: "/dashboard/reservations", label: "Reservations" },
@@ -121,7 +122,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <TopBar />
       <main className="ml-56 pt-14">
-        <div className="p-6">{children}</div>
+        <div className="p-6">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </main>
     </div>
   );

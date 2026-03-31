@@ -44,15 +44,18 @@ export default function WaitlistPage() {
     return () => clearInterval(interval);
   }, [fetchEntries]);
 
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const handleStatusChange = async (
     entryId: string,
     newStatus: string
   ) => {
+    setActionError(null);
     try {
       await api.patch(`/waitlist/${entryId}`, { status: newStatus });
       fetchEntries();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Failed to update");
+      setActionError(err instanceof ApiError ? err.message : "Failed to update");
     }
   };
 
@@ -75,10 +78,10 @@ export default function WaitlistPage() {
         </div>
       </div>
 
-      {/* Error */}
-      {error && (
+      {/* Errors */}
+      {(error || actionError) && (
         <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-          {error}
+          {error || actionError}
         </div>
       )}
 

@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.7.3 — Pre-Phase 3 Quality Review (2026-03-31)
 ### 0.7.2 — Post-Phase 2 Production Readiness (2026-03-31)
 ### 0.7.1 — Phase 2H: Code Quality & Security Hardening (2026-03-31)
 ### 0.7.0 — Phase 2G: Booking Widget (2026-03-31)
@@ -13,6 +14,43 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.3 — Pre-Phase 3 Quality Review
+
+**Date**: 2026-03-31
+
+Comprehensive quality review addressing 20 findings across backend, frontend, and infrastructure. Full details in [`docs/completions/pre-phase-3-quality-review-completion.md`](completions/pre-phase-3-quality-review-completion.md).
+
+### Backend (10 fixes)
+- **Partial unique index** on `users.email` — soft-deleted users no longer block email reuse
+- **Connection pooling** — `pool_size=10`, `max_overflow=20`, `pool_pre_ping=True`
+- **Cancel token indexed** — prevents full table scan on public cancel endpoint
+- **Access rule active check** — reservation creation now rejects deactivated rules (HTTP 409)
+- **selectinload pagination** — replaced `joinedload` to fix LIMIT interaction; deduplicated filter logic
+- **Timezone validation** — invalid IANA timezone strings rejected at venue creation/update
+- **Party size re-validation** — `PATCH /reservations` checks slot capacity before accepting new party size
+- **Rate limiting** — `slowapi` on auth (5-20/min), availability (30/min), booking (10/min)
+- **Readiness endpoint** — `/health/ready` verifies DB connectivity (503 on failure)
+- **AccessRuleUpdate cross-field validation** — partial updates validated against existing DB values
+
+### Frontend (5 fixes)
+- Replaced `alert()` with inline error state on waitlist page
+- Type-safe 204 response handling; `api.delete` typed as `request<null>`
+- Token refresh mutex prevents concurrent refresh calls from desynchronising tokens
+- Non-null assertion replaced with explicit null guard on reservation form
+- `ErrorBoundary` component wraps dashboard content for graceful crash recovery
+
+### Infrastructure (5 fixes)
+- Uvicorn runs 4 workers in Docker (`--workers 4`)
+- Dependency versions tightened: `^` → `~` (frontend), narrower ranges (backend)
+- `docker-compose.prod.yml` overlay with resource limits, restart policies, and secret management
+- Seed script refuses to run when `ENVIRONMENT=production`
+- Added `backend/.env.example` documenting all required production variables
+
+### Migration
+- `0003_quality_hardening` — partial unique index on `users.email`, index on `reservations.cancel_token`
 
 ---
 

@@ -28,6 +28,13 @@ from app.models.venue import Venue
 
 
 async def seed() -> None:
+    from app.core.config import settings
+
+    if settings.ENVIRONMENT == "production":
+        print("ERROR: Seed script must not run in production (ENVIRONMENT=production).")
+        print("Set ENVIRONMENT=development to use this script.")
+        sys.exit(1)
+
     async with async_session_factory() as db:
         # Idempotency: skip if the demo org already exists
         existing = await db.execute(

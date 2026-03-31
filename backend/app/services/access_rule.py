@@ -59,8 +59,28 @@ async def update_access_rule(
     data: AccessRuleUpdate,
 ) -> AccessRule:
     rule = await get_access_rule(db, rule_id, venue_id)
+    updates = data.model_dump(exclude_unset=True)
 
-    for field, value in data.model_dump(exclude_unset=True).items():
+    # Cross-field validation against existing DB values for partial updates.
+    # The schema validates when both fields are provided; here we catch the
+    # case where only one of a pair is updated.
+    eff_start = updates.get("start_time", rule.start_time)
+    eff_end = updates.get("end_time", rule.end_time)
+    if eff_start >= eff_end:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "start_time must be before end_time",
+        )
+
+    eff_min = updates.get("min_party_size", rule.min_party_size)
+    eff_max = updates.get("max_party_size", rule.max_party_size)
+    if eff_min > eff_max:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "min_party_size must be <= max_party_size",
+        )
+
+    for field, value in updates.items():
         setattr(rule, field, value)
 
     await db.flush()

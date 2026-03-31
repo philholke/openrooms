@@ -63,6 +63,8 @@ class AccessRuleUpdate(BaseModel):
 
     @model_validator(mode="after")
     def _validate(self):
+        # When both fields in a pair are provided, validate them against each other.
+        # Single-field updates are validated in the service layer against DB values.
         if self.start_time is not None and self.end_time is not None:
             if self.start_time >= self.end_time:
                 raise ValueError("start_time must be before end_time")

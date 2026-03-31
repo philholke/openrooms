@@ -186,7 +186,7 @@ export default function NewReservationPage() {
       )}
 
       {/* Step 3: Guest Info */}
-      {step === "guest" && (
+      {step === "guest" && selectedSlot && (
         <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
           <div className="flex items-center justify-between">
             <h2 className="font-medium text-gray-900">Guest Information</h2>
@@ -198,9 +198,9 @@ export default function NewReservationPage() {
             </button>
           </div>
           <p className="text-sm text-gray-500">
-            {formatTime(selectedSlot!.time)} &middot; {partySize} guest
+            {formatTime(selectedSlot.time)} &middot; {partySize} guest
             {partySize !== 1 ? "s" : ""} &middot;{" "}
-            {selectedSlot!.access_rule_name}
+            {selectedSlot.access_rule_name}
           </p>
           <div className="grid grid-cols-2 gap-3">
             <Input

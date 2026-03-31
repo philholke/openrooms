@@ -4,12 +4,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import router as api_v1_router
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Rate limiter — keyed by client IP address
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ─── Security Headers Middleware ────────────────────────────────────────
@@ -48,6 +54,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_exception_handler(HTTPException, http_exception_handler)
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -63,7 +71,29 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
+    """Liveness check — returns 200 if the process is running."""
     return {"status": "healthy", "project": settings.PROJECT_NAME}
+
+
+@app.get("/health/ready")
+async def readiness_check():
+    """Readiness check — verifies database connectivity."""
+    from sqlalchemy import text as sa_text
+    from app.core.database import async_session_factory
+
+    try:
+        async with async_session_factory() as session:
+            await session.execute(sa_text("SELECT 1"))
+        return {"status": "ready", "project": settings.PROJECT_NAME}
+    except Exception as exc:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "project": settings.PROJECT_NAME,
+                "detail": str(exc),
+            },
+        )
 
 
 app.include_router(api_v1_router, prefix="/api/v1")
