@@ -106,6 +106,9 @@ class Reservation(TimestampMixin, Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     special_requests: Mapped[str | None] = mapped_column(Text, nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cancel_token: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, unique=True,
+    )
 
     # Relationships
     venue: Mapped["Venue"] = relationship(back_populates="reservations")  # noqa: F821

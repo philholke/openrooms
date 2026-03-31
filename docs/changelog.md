@@ -4,7 +4,222 @@
 
 ## Index
 
+### 0.7.1 — Phase 2H: Code Quality & Security Hardening (2026-03-31)
+### 0.7.0 — Phase 2G: Booking Widget (2026-03-31)
+### 0.6.0 — Phase 2F: Staff Dashboard (Frontend) (2026-03-31)
+### 0.5.0 — Phase 2D: Waitlist CRUD (2026-03-31)
+### 0.4.0 — Phase 2C+2E: Reservations & Guest Auto-Creation (2026-03-31)
+### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
+### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.1 — Phase 2H: Code Quality & Security Hardening
+
+**Date**: 2026-03-31
+
+Comprehensive review and hardening pass across all Phase 2 code. Full details in [`docs/completions/phase-2h-completion.md`](completions/phase-2h-completion.md).
+
+### Security
+- Fixed IDOR on public cancel endpoint — now requires cryptographic `cancel_token` query parameter
+- Added CSS injection prevention on booking widget `primaryColor` URL param
+- Centralised token cleanup on logout to clear stale venue preferences
+
+### Concurrency & Data Integrity
+- Added `SELECT FOR UPDATE` lock on slot availability check to prevent overbooking
+- Added `IntegrityError` handling on guest upsert for concurrent deduplication
+- Added row-level locking on reservation status transitions
+- Made `seat_from_waitlist` atomic (single flush for waitlist + reservation)
+
+### Frontend Reliability
+- Implemented automatic token refresh with single-retry on 401
+- Added JSON parse error handling in both authenticated and public API clients
+- Added error state display to reservations page, waitlist page, and venue context
+- Fixed auth guard race condition (loading vs. redirect timing)
+- Replaced `window.location.href` with `router.push()` for SPA navigation
+
+### Validation & Schemas
+- Added `max_length` constraints to all string input fields across schemas
+- Added `min_length=8` password requirement on register and user create
+- Added missing `require_deposit` cross-field validation to `AccessRuleUpdate`
+- Fixed UUID parse error in `get_current_user` (500 → 401)
+- Added pagination tiebreaker (`Reservation.id`) to prevent non-deterministic ordering
+- Created schemas for Survey (with rating range validation), FloorPlan/Table, and Tag (with hex color validation)
+
+### API Completeness
+- Added `GET /access-rules/{rule_id}` endpoint
+- Added `DELETE /waitlist/{entry_id}` endpoint
+- Reduced default `per_page` from 100 to 50 on reservations page
+
+### Accessibility
+- Added `aria-label` to Modal close button
+- Added keyboard navigation (Enter/Space) to reservation table rows
+
+---
+
+## 0.7.0 — Phase 2G: Booking Widget
+
+**Date**: 2026-03-31
+
+Guest-facing booking widget — completes Phase 2. Full details in [`docs/completions/phase-2g-completion.md`](completions/phase-2g-completion.md).
+
+### Public Booking Page
+- 5-step flow at `/book/{venue_id}`: date & party size → time slot selection → guest info → confirmation → success
+- Slots grouped by meal period (access rule name) in a 3-column touch-friendly grid
+- Mobile-first `max-w-md` card layout — works on any device
+- Venue name and address displayed from public API
+
+### Theming
+- URL-based: `?primaryColor=hex` sets primary button color
+- Any hex value works without compile-time changes
+
+### API Integration
+- Standalone `publicFetch` — no auth context, no JWT
+- Only two endpoints: availability check + reservation create
+- All bookings tagged `source: "widget"` for channel analytics
+- Email required (ensures guest profile deduplication)
+
+### Phase 2 Complete
+All exit criteria met. End-to-end flow: guest books via widget → staff manages from dashboard → reservation progresses through status machine → visit recorded in CRM.
+
+---
+
+## 0.6.0 — Phase 2F: Staff Dashboard (Frontend)
+
+**Date**: 2026-03-31
+
+Staff-facing dashboard for managing reservations and waitlist. Full details in [`docs/completions/phase-2f-completion.md`](completions/phase-2f-completion.md).
+
+### Foundation
+- Fetch-based API client with auto JWT injection and envelope parsing
+- TypeScript types mirroring all backend schemas
+- 6 UI primitives (Button, Input, Select, Badge, Modal, Card) — all Tailwind, no component library
+- Auth context (login, register, logout, token management in localStorage)
+- Venue context (auto-loads venues, persists selection across refreshes)
+
+### Auth Pages
+- Login and register pages with error handling
+- Register auto-generates URL slug from organization name
+- Dashboard layout acts as auth guard — redirects to login if unauthenticated
+
+### Dashboard Layout
+- Fixed sidebar (224px) with nav links and venue selector for multi-venue orgs
+- Top bar with user name and sign-out
+
+### Reservations
+- Daily reservation list with date picker and status filter tabs (All/Upcoming/Seated/Completed/Cancelled)
+- Table view with time, guest, party size, table, status badge, notes
+- Click-to-open detail modal with contextual status action buttons (Confirm/Arrive/Seat/Complete/Cancel/No Show)
+- 4-step staff booking form: date+party → slot selection (grouped by meal period) → guest info → confirm
+- 30-second auto-refresh
+
+### Waitlist
+- Card-based FIFO list with party size, guest name, elapsed/quoted wait time
+- Inline Notify/Seat/No Show action buttons
+- Add-to-waitlist modal with party size picker and quoted wait input
+- 15-second auto-refresh
+
+---
+
+## 0.5.0 — Phase 2D: Waitlist CRUD
+
+**Date**: 2026-03-31
+
+Walk-in guest management from check-in to seating. Full details in [`docs/completions/phase-2d-completion.md`](completions/phase-2d-completion.md).
+
+### Waitlist Management
+- Add walk-ins with guest info, party size, and quoted wait time
+- FIFO-ordered active list (waiting + notified), with option to show all
+- Status machine: `waiting → notified → seated` (plus `cancelled`/`no_show` exits)
+- Auto-records `seated_time` for wait-time analytics
+- Guest upsert on add — walk-ins get CRM profiles just like online bookings
+
+### Walk-in → Reservation Bridge
+- `seat_from_waitlist` with a table ID creates a `Reservation(source="walk_in", status="seated")`
+- Walk-ins appear alongside bookings in the reservation list — uniform tracking
+
+### All Staff-Only
+- All 3 endpoints require `staff+` auth (unlike reservations which have public create/cancel)
+- Org-scoped via venue ownership verification
+
+---
+
+## 0.4.0 — Phase 2C+2E: Reservations & Guest Auto-Creation
+
+**Date**: 2026-03-31
+
+Full reservation lifecycle and automatic guest profile management. Full details in [`docs/completions/phase-2c-2e-completion.md`](completions/phase-2c-2e-completion.md).
+
+### Guest Auto-Creation (2E)
+- `get_or_create_guest()` upsert — matches by `(org_id, email)`, enriches without overwriting staff corrections
+- `GuestInfo` schema embedded in reservation/waitlist creation requests
+- No-email guests always create new profiles (phone-based dedup is future scope)
+
+### Reservation CRUD (2C)
+- Create reservation with server-side availability re-validation (prevents race conditions)
+- List with date/status/guest-name filters and pagination
+- Update mutable fields: table assignment, notes, party size, special requests
+- Public create (`POST /venues/{id}/reservations`) and cancel (`POST /reservations/{id}/cancel`) for widget flow
+- Staff-only list, get, update, and status endpoints
+
+### Status Machine
+- Enforced transitions: `pending→confirmed→arrived→seated→completed` (plus `cancelled` and `no_show` branches)
+- HTTP 409 with clear error on invalid transitions
+- Side effects: `→completed` auto-creates GuestVisit; `→cancelled` sets `cancelled_at` and appends reason to notes
+
+---
+
+## 0.3.0 — Phase 2B: Access Rules & Availability Engine
+
+**Date**: 2026-03-31
+
+Access rule management and the availability engine. Full details in [`docs/completions/phase-2b-completion.md`](completions/phase-2b-completion.md).
+
+### Access Rules
+- Pydantic schemas with cross-field validation (time ordering, party size ranges, slot intervals, deposit requirements)
+- Async service layer with full CRUD + soft delete
+- REST endpoints: list/create under `/venues/{id}/access-rules`, update/delete at `/access-rules/{id}` (manager+ auth)
+- Org-scoping enforced on all operations
+
+### Availability Engine
+- Core algorithm in `services/availability.py` — generates bookable slots from rules, existing reservations, and pacing limits
+- Pacing counts covers (sum of party sizes), not reservation count — correctly handles mixed party sizes
+- Only 2 DB queries total (rules + batch cover counts) regardless of slot count
+- Timezone-aware cutoff for same-day bookings via `zoneinfo`
+- Public endpoint at `GET /venues/{id}/availability?date=...&party_size=...` (no auth — for booking widget)
+
+---
+
+## 0.2.0 — Phase 2A: Backend Foundation
+
+**Date**: 2026-03-31
+
+Backend infrastructure for auth, CRUD, and data seeding. Full details in [`docs/completions/phase-2a-completion.md`](completions/phase-2a-completion.md).
+
+### API Envelope
+- Generic `Envelope[T]` and `PaginatedEnvelope[T]` response wrappers with `data`, `meta`, `errors` structure
+- Helper functions `ok()`, `paginated()`, `error()` for consistent endpoint responses
+
+### Auth & JWT
+- JWT-based authentication with access + refresh token flow
+- Password hashing via bcrypt (passlib)
+- Auth endpoints: `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`
+- Registration creates Organization + owner User atomically
+- Role hierarchy: owner > admin > manager > staff with `require_role()` dependency guard
+
+### Org, Venue, User CRUD
+- Organization: GET/PATCH current org (admin+ to update)
+- Venues: full CRUD with org-scoped slug uniqueness, pagination, soft delete (admin+ to create/delete, manager+ to update, staff+ to read)
+- Users: full CRUD with email uniqueness, pagination, soft delete, self-deletion prevention (admin+ for all management, any authenticated for `/users/me`)
+- All endpoints enforce multi-tenancy via `org_id` scoping
+
+### Initial Migration
+- Hand-written Alembic migration (`0001_initial_schema`) covering all 12 entities / 13 tables
+- FK-ordered creation and reverse-ordered teardown
+
+### Seed Data
+- Idempotent `scripts/seed.py` with demo org, 3 users, 2 venues, floor plans, tables, access rules, and 8 guest profiles
 
 ---
 

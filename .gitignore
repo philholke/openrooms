@@ -30,6 +30,4 @@ out/
 # Docker
 pgdata/
 
-# Alembic
-backend/alembic/versions/*.py
-!backend/alembic/versions/.gitkeep
+# Alembic — migrations are committed (they are the schema source of truth)
