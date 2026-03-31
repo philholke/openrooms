@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.7.6 — Pre-Phase 3 Quality Review Round 4 (2026-03-31)
 ### 0.7.5 — Pre-Phase 3 Quality Review Round 3 (2026-03-31)
 ### 0.7.4 — Pre-Phase 3 Quality Review Round 2 (2026-03-31)
 ### 0.7.3 — Pre-Phase 3 Quality Review (2026-03-31)
@@ -16,6 +17,24 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.6 — Pre-Phase 3 Quality Review Round 4
+
+**Date**: 2026-03-31
+
+Fourth quality review pass addressing 6 findings (2 high, 4 medium) across backend and frontend. Focuses on concurrency safety under production load, timezone correctness, and input validation consistency. Full details in [`docs/completions/pre-phase-3-quality-review-4-completion.md`](completions/pre-phase-3-quality-review-4-completion.md).
+
+### Backend (5 fixes)
+- **Party-size update overbooking race** — `update_reservation` party-size validation now acquires `FOR UPDATE` lock on sibling reservations, preventing concurrent increases from exceeding slot capacity
+- **Availability `today` uses venue timezone** — `get_available_slots` now uses `ZoneInfo(venue_timezone)` instead of `date.today()` for advance booking window calculation
+- **`seat_from_waitlist` table-venue validation** — added `Table → FloorPlan → venue_id` join check before creating walk-in reservation
+- **Slug TOCTOU → 409** — venue create/update and org update now catch `IntegrityError` on concurrent slug collisions, returning HTTP 409 instead of 500
+- **Pagination params validated** — `list_users` and `list_venues` now use `Query(ge=1, le=100)` consistent with all other paginated endpoints
+
+### Frontend (1 fix)
+- **Booking widget hex regex** — tightened from `{3,8}` to exact 3/6/8 character match, rejecting invalid CSS hex lengths
 
 ---
 

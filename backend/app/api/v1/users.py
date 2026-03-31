@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,8 +26,8 @@ async def get_me(user: User = Depends(get_current_user)):
 
 @router.get("", response_model=PaginatedEnvelope[UserRead])
 async def list_users(
-    page: int = 1,
-    per_page: int = 25,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
     org: Organization = Depends(get_current_org),
     _user: User = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),

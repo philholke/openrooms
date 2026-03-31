@@ -181,6 +181,23 @@ async def seat_from_waitlist(
     reservation_data = None
 
     if table_id is not None:
+        # Validate that the table belongs to this venue (via FloorPlan join)
+        from app.models.floor_plan import FloorPlan, Table
+        table_result = await db.execute(
+            select(Table)
+            .join(FloorPlan, Table.floor_plan_id == FloorPlan.id)
+            .where(
+                Table.id == table_id,
+                Table.is_active.is_(True),
+                FloorPlan.venue_id == venue_id,
+            )
+        )
+        if table_result.scalar_one_or_none() is None:
+            raise HTTPException(
+                status.HTTP_404_NOT_FOUND,
+                "Table not found in this venue",
+            )
+
         now = datetime.now(timezone.utc)
         reservation = Reservation(
             venue_id=venue_id,

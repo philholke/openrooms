@@ -293,7 +293,9 @@ async def update_reservation(
                 f"(capacity {table.min_capacity}–{table.max_capacity})",
             )
 
-    # If party_size is changing, re-validate against the slot's capacity limit
+    # If party_size is changing, re-validate against the slot's capacity limit.
+    # Lock sibling reservations in the same slot to prevent concurrent
+    # party_size increases from both passing the capacity check.
     if "party_size" in updates and updates["party_size"] != reservation.party_size:
         new_size = updates["party_size"]
         if reservation.access_rule_id:
@@ -302,7 +304,7 @@ async def update_reservation(
             )
             rule = rule_result.scalar_one_or_none()
             if rule and rule.max_covers_per_slot is not None:
-                # Count other reservations in the same slot (excluding this one)
+                # Lock + count other reservations in the same slot (excluding this one)
                 other_covers_result = await db.execute(
                     select(func.coalesce(func.sum(Reservation.party_size), 0)).where(
                         Reservation.venue_id == venue_id,
@@ -311,9 +313,9 @@ async def update_reservation(
                         Reservation.access_rule_id == reservation.access_rule_id,
                         Reservation.id != reservation.id,
                         Reservation.status.in_(
-                            {"pending", "confirmed", "arrived", "partially_arrived", "seated"}
+                            ["pending", "confirmed", "arrived", "partially_arrived", "seated"]
                         ),
-                    )
+                    ).with_for_update()
                 )
                 other_covers = other_covers_result.scalar_one()
                 if other_covers + new_size > rule.max_covers_per_slot:

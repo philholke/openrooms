@@ -38,7 +38,16 @@ async def get_available_slots(
 
     # ── 1. Load matching access rules ────────────────────────────────
     weekday = target_date.weekday()  # 0=Mon .. 6=Sun
-    today = date.today()
+
+    # Use the venue's timezone to determine "today", not the server's local tz.
+    # A UTC server would otherwise be off by up to a day for western timezones,
+    # causing incorrect advance booking window calculations.
+    try:
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo(venue_timezone)).date()
+    except (KeyError, Exception):
+        today = date.today()
+
     days_until = (target_date - today).days
 
     stmt = (
@@ -71,14 +80,8 @@ async def get_available_slots(
         return []
 
     # ── 2. Generate candidate slots per rule ─────────────────────────
-    # Pre-compute current time for cutoff checks.
-    # We use a naive "now in venue timezone" for cutoff. For correctness
-    # with arbitrary timezones we'd use zoneinfo, but this avoids adding
-    # a hard dependency — the venue_timezone param is available for future
-    # refinement.
+    # Pre-compute current time in the venue's timezone for cutoff checks.
     now_utc = datetime.now(timezone.utc)
-
-    # Attempt timezone-aware "now" for the venue
     try:
         from zoneinfo import ZoneInfo
         venue_now = now_utc.astimezone(ZoneInfo(venue_timezone))

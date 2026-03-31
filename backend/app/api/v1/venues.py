@@ -1,7 +1,8 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -33,8 +34,8 @@ async def _get_venue_or_404(
 
 @router.get("", response_model=PaginatedEnvelope[VenueRead])
 async def list_venues(
-    page: int = 1,
-    per_page: int = 25,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(25, ge=1, le=100),
     org: Organization = Depends(get_current_org),
     _user: User = Depends(require_role("staff")),
     db: AsyncSession = Depends(get_db),
@@ -80,10 +81,14 @@ async def create_venue(
     if existing.scalar_one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, "Venue slug already exists in this org")
 
-    venue = Venue(org_id=org.id, **body.model_dump())
-    db.add(venue)
-    await db.flush()
-    await db.refresh(venue)
+    try:
+        venue = Venue(org_id=org.id, **body.model_dump())
+        db.add(venue)
+        await db.flush()
+        await db.refresh(venue)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Venue slug already exists in this org")
     return ok(VenueRead.model_validate(venue))
 
 
@@ -119,11 +124,14 @@ async def update_venue(
         if existing.scalar_one_or_none():
             raise HTTPException(status.HTTP_409_CONFLICT, "Venue slug already exists in this org")
 
-    for field, value in body.model_dump(exclude_unset=True).items():
-        setattr(venue, field, value)
-
-    await db.flush()
-    await db.refresh(venue)
+    try:
+        for field, value in body.model_dump(exclude_unset=True).items():
+            setattr(venue, field, value)
+        await db.flush()
+        await db.refresh(venue)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Venue slug already exists in this org")
     return ok(VenueRead.model_validate(venue))
 
 

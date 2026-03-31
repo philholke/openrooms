@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -37,9 +38,12 @@ async def update_org(
         if existing.scalar_one_or_none():
             raise HTTPException(status.HTTP_409_CONFLICT, "Slug already taken")
 
-    for field, value in body.model_dump(exclude_unset=True).items():
-        setattr(org, field, value)
-
-    await db.flush()
-    await db.refresh(org)
+    try:
+        for field, value in body.model_dump(exclude_unset=True).items():
+            setattr(org, field, value)
+        await db.flush()
+        await db.refresh(org)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT, "Slug already taken")
     return ok(OrgRead.model_validate(org))

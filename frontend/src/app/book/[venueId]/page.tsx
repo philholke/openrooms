@@ -24,7 +24,7 @@ export default function BookingWidget() {
 
   // Theming from URL params — validate as hex to prevent CSS injection
   const rawColor = searchParams.get("primaryColor") || "111827";
-  const primaryColor = /^[0-9A-Fa-f]{3,8}$/.test(rawColor) ? rawColor : "111827";
+  const primaryColor = /^[0-9A-Fa-f]{3}([0-9A-Fa-f]{3}([0-9A-Fa-f]{2})?)?$/.test(rawColor) ? rawColor : "111827";
   const primaryStyle = { backgroundColor: `#${primaryColor}` };
 
   // State
