@@ -24,6 +24,17 @@ async def create_survey(
     org_id: uuid.UUID,
 ) -> SurveyRead:
     """Create a survey response, validating cross-tenant references."""
+    # Verify venue belongs to the same org
+    venue_result = await db.execute(
+        select(Venue.id).where(
+            Venue.id == data.venue_id,
+            Venue.org_id == org_id,
+            Venue.is_active.is_(True),
+        )
+    )
+    if venue_result.scalar_one_or_none() is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Venue not found in this organization")
+
     # Verify guest belongs to the same org
     guest_result = await db.execute(
         select(GuestProfile.id).where(

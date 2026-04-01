@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 import { useVenue } from "@/lib/venue";
-import { formatTime, today } from "@/lib/utils";
+import { formatTime, today, maxDate } from "@/lib/utils";
 import type { AvailabilityResponse, AvailableSlot, Reservation } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -124,6 +124,7 @@ export default function NewReservationPage() {
             value={date}
             onChange={(e) => setDate(e.target.value)}
             min={today()}
+            max={maxDate()}
           />
           <div className="space-y-1">
             <label className="block text-sm font-medium text-gray-700">

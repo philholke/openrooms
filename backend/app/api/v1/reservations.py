@@ -1,5 +1,6 @@
 import uuid
 from datetime import date
+from typing import get_args
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from slowapi import Limiter
@@ -14,6 +15,7 @@ from app.models.user import User
 from app.models.venue import Venue
 from app.schemas.envelope import Envelope, PaginatedEnvelope, ok, paginated
 from app.schemas.reservation import (
+    RESERVATION_STATUSES,
     ReservationCancel,
     ReservationCreate,
     ReservationRead,
@@ -22,6 +24,8 @@ from app.schemas.reservation import (
 )
 from app.services import reservation as reservation_service
 from app.api.v1.venues import _get_venue_or_404
+
+_VALID_STATUSES = set(get_args(RESERVATION_STATUSES))
 
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(tags=["reservations"])
@@ -54,7 +58,7 @@ async def list_reservations(
         alias="status",
         description="Comma-separated statuses: confirmed,arrived",
     ),
-    search: str = Query(None, description="Search guest first/last name"),
+    search: str = Query(None, max_length=255, description="Search guest first/last name"),
     page: int = Query(1, ge=1),
     per_page: int = Query(25, ge=1, le=100),
     org: Organization = Depends(get_current_org),
@@ -66,6 +70,12 @@ async def list_reservations(
     statuses = None
     if status_filter:
         statuses = [s.strip() for s in status_filter.split(",") if s.strip()]
+        invalid = set(statuses) - _VALID_STATUSES
+        if invalid:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                f"Invalid status values: {', '.join(sorted(invalid))}",
+            )
 
     items, total = await reservation_service.list_reservations(
         db,

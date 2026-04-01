@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 def _validate_iana_timezone(v: str) -> str:
@@ -23,7 +23,7 @@ class VenueCreate(BaseModel):
     address: str | None = Field(None, max_length=500)
     timezone: str = Field("UTC", max_length=100)
     phone: str | None = Field(None, max_length=50)
-    email: str | None = Field(None, max_length=255)
+    email: EmailStr | None = None
 
     @field_validator("timezone")
     @classmethod
@@ -37,7 +37,7 @@ class VenueUpdate(BaseModel):
     address: str | None = Field(None, max_length=500)
     timezone: str | None = Field(None, max_length=100)
     phone: str | None = Field(None, max_length=50)
-    email: str | None = Field(None, max_length=255)
+    email: EmailStr | None = None
 
     @field_validator("timezone")
     @classmethod

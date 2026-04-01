@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.7.8 — Pre-Phase 3 Quality Review Round 6 (2026-04-01)
 ### 0.7.7 — Pre-Phase 3 Quality Review Round 5 (2026-03-31)
 ### 0.7.6 — Pre-Phase 3 Quality Review Round 4 (2026-03-31)
 ### 0.7.5 — Pre-Phase 3 Quality Review Round 3 (2026-03-31)
@@ -18,6 +19,26 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.8 — Pre-Phase 3 Quality Review Round 6
+
+**Date**: 2026-04-01
+
+Sixth quality review pass addressing 8 findings (3 high, 5 medium) across backend and frontend. Focuses on input validation completeness, cross-tenant isolation, and frontend resilience. Full details in [`docs/completions/pre-phase-3-quality-review-6-completion.md`](completions/pre-phase-3-quality-review-6-completion.md).
+
+### Backend (5 fixes)
+- **Reservation status filter validation** — `list_reservations` now validates comma-separated status values against the `RESERVATION_STATUSES` Literal type, returning HTTP 422 on invalid values instead of silently returning empty results
+- **Waitlist party_size upper bound** — `WaitlistEntryCreate.party_size` now capped at 100 via `Field(ge=1, le=100)`, matching `ReservationCreate`
+- **Venue EmailStr validation** — `VenueCreate` and `VenueUpdate` email fields now use Pydantic `EmailStr` instead of plain `str`
+- **Survey venue-org validation** — `create_survey()` now verifies `venue_id` belongs to the calling org before creating the survey
+- **Search query max_length** — `list_reservations` search parameter now capped at 255 characters
+
+### Frontend (3 fixes)
+- **Auth error discrimination** — `fetchUser` now only clears tokens on 401/403 errors; network timeouts and server errors no longer log the user out
+- **Stale reservation modal** — detail modal closes when the selected reservation leaves the polling dataset, instead of showing a stale fallback
+- **Date max constraint** — all date pickers (booking widget, staff form, reservations list) now cap at 365 days from today
 
 ---
 

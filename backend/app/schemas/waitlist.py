@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from app.schemas.guest import GuestInfo, GuestRead
 
@@ -10,17 +10,10 @@ WAITLIST_STATUSES = Literal["waiting", "notified", "seated", "cancelled", "no_sh
 
 
 class WaitlistEntryCreate(BaseModel):
-    party_size: int
+    party_size: int = Field(..., ge=1, le=100)
     guest: GuestInfo
     quoted_wait_minutes: int | None = Field(None, ge=0, le=480)
     notes: str | None = Field(None, max_length=2000)
-
-    @field_validator("party_size")
-    @classmethod
-    def _party_size_positive(cls, v: int) -> int:
-        if v < 1:
-            raise ValueError("party_size must be >= 1")
-        return v
 
 
 class WaitlistEntryUpdate(BaseModel):

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useVenue } from "@/lib/venue";
-import { formatTime, today, cn } from "@/lib/utils";
+import { formatTime, today, maxDate, cn } from "@/lib/utils";
 import type { Reservation, ReservationStatus } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -96,6 +96,7 @@ export default function ReservationsPage() {
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
+            max={maxDate()}
             className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
           />
           <Button
@@ -208,14 +209,18 @@ export default function ReservationsPage() {
       </p>
 
       {/* Detail modal — sync with latest data from polling */}
-      {selected && (
-        <ReservationDetail
-          reservation={reservations.find((r) => r.id === selected.id) ?? selected}
-          open={!!selected}
-          onClose={() => setSelected(null)}
-          onUpdated={() => fetchReservations()}
-        />
-      )}
+      {selected && (() => {
+        const synced = reservations.find((r) => r.id === selected.id);
+        if (!synced) return null;
+        return (
+          <ReservationDetail
+            reservation={synced}
+            open
+            onClose={() => setSelected(null)}
+            onUpdated={() => fetchReservations()}
+          />
+        );
+      })()}
     </div>
   );
 }

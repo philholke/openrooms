@@ -9,7 +9,7 @@ import React, {
   useMemo,
   type ReactNode,
 } from "react";
-import { api, storeTokens as storeTokenPair, clearTokens } from "./api";
+import { api, ApiError, storeTokens as storeTokenPair, clearTokens } from "./api";
 import type { TokenResponse, User } from "./types";
 
 interface AuthState {
@@ -36,9 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const res = await api.get<User>("/users/me");
       setUser(res.data);
-    } catch {
-      clearTokens();
-      setUser(null);
+    } catch (err) {
+      // Only clear tokens on auth failures (401/403). Network errors,
+      // timeouts, and server errors should not log the user out.
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        clearTokens();
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }

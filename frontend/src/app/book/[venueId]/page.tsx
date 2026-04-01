@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { publicFetch } from "@/lib/api";
-import { formatTime, today, cn } from "@/lib/utils";
+import { formatTime, today, maxDate, cn } from "@/lib/utils";
 import type {
   AvailabilityResponse,
   AvailableSlot,
@@ -180,6 +180,7 @@ export default function BookingWidget() {
               value={date}
               onChange={(e) => setDate(e.target.value)}
               min={today()}
+              max={maxDate()}
               className="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm focus:border-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-500"
             />
           </div>

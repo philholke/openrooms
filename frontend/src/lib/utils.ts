@@ -45,6 +45,18 @@ export function today(): string {
 }
 
 /**
+ * Get the date 365 days from now as YYYY-MM-DD (max booking horizon).
+ */
+export function maxDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 365);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Calculate elapsed minutes from a datetime string.
  */
 export function minutesElapsed(from: string): number {
