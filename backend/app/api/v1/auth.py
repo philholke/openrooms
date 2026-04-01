@@ -4,7 +4,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from slowapi import Limiter
 from slowapi.util import get_remote_address
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,9 +34,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 )
 @limiter.limit("5/minute")
 async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    # Check email uniqueness (only among active users — soft-deleted emails can be reused)
+    # Check email uniqueness (case-insensitive; only among active users — soft-deleted emails can be reused)
     existing = await db.execute(
-        select(User).where(User.email == body.email, User.is_active.is_(True))
+        select(User).where(func.lower(User.email) == body.email.lower(), User.is_active.is_(True))
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
@@ -84,7 +84,7 @@ async def register(request: Request, body: RegisterRequest, db: AsyncSession = D
 @limiter.limit("10/minute")
 async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(User).where(User.email == body.email, User.is_active.is_(True))
+        select(User).where(func.lower(User.email) == body.email.lower(), User.is_active.is_(True))
     )
     user = result.scalar_one_or_none()
     if user is None or not verify_password(body.password, user.hashed_password):

@@ -64,7 +64,7 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
 ):
     existing = await db.execute(
-        select(User).where(User.email == body.email, User.is_active.is_(True))
+        select(User).where(func.lower(User.email) == body.email.lower(), User.is_active.is_(True))
     )
     if existing.scalar_one_or_none():
         raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")

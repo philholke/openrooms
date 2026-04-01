@@ -216,10 +216,11 @@ async def get_guest_detail(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Guest not found")
 
     # Recent visits with venue name (last 10)
+    # Join through Venue and filter by org_id for defense-in-depth
     visits_result = await db.execute(
         select(GuestVisit, Venue.name.label("venue_name"))
         .join(Venue, GuestVisit.venue_id == Venue.id)
-        .where(GuestVisit.guest_id == guest_id)
+        .where(GuestVisit.guest_id == guest_id, Venue.org_id == org_id)
         .order_by(GuestVisit.visited_at.desc())
         .limit(10)
     )
@@ -237,26 +238,31 @@ async def get_guest_detail(
         for row in visit_rows
     ]
 
-    # Recent surveys (last 5)
+    # Recent surveys (last 5) — org-scoped via venue join
     surveys_result = await db.execute(
         select(Survey)
-        .where(Survey.guest_id == guest_id)
+        .join(Venue, Survey.venue_id == Venue.id)
+        .where(Survey.guest_id == guest_id, Venue.org_id == org_id)
         .order_by(Survey.created_at.desc())
         .limit(5)
     )
     surveys = [SurveyRead.model_validate(s) for s in surveys_result.scalars().all()]
 
-    # Aggregate stats
+    # Aggregate stats — org-scoped via venue join
     stats_result = await db.execute(
         select(
             func.count().label("total_visits"),
             func.max(GuestVisit.visited_at).label("last_visit_date"),
-        ).where(GuestVisit.guest_id == guest_id)
+        )
+        .join(Venue, GuestVisit.venue_id == Venue.id)
+        .where(GuestVisit.guest_id == guest_id, Venue.org_id == org_id)
     )
     stats = stats_result.one()
 
     avg_rating_result = await db.execute(
-        select(func.avg(Survey.overall_rating)).where(Survey.guest_id == guest_id)
+        select(func.avg(Survey.overall_rating))
+        .join(Venue, Survey.venue_id == Venue.id)
+        .where(Survey.guest_id == guest_id, Venue.org_id == org_id)
     )
     avg_rating = avg_rating_result.scalar_one_or_none()
 

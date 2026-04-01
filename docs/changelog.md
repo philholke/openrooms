@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.9.2 — Post-Phase 4 Quality Review Round 2 (2026-04-01)
 ### 0.9.1 — Post-Phase 4 Quality Review (2026-04-01)
 ### 0.9.0 — Phase 4: CRM & Guest Profiles + Post-Visit Surveys (2026-04-01)
 ### 0.8.3 — Pre-Phase 4 Quality Review Round 2 (2026-04-01)
@@ -26,6 +27,26 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.9.2 — Post-Phase 4 Quality Review Round 2
+
+**Date**: 2026-04-01
+
+Quality review addressing 3 findings (0 high, 2 medium, 1 low) across backend services, API routes, and migrations. Focuses on defense-in-depth org scoping, case-insensitive email uniqueness, and duplicate index cleanup.
+
+### Backend — Defense-in-Depth: Guest Detail Org Scoping (MEDIUM)
+
+- **`guest.py` `get_guest_detail()`** — added `Venue.org_id == org_id` filter via venue join to all four sub-queries: recent visits, recent surveys, aggregate visit stats, and average survey rating. Previously, these queries filtered only by `guest_id`, relying on the assumption that all visits/surveys for an org-scoped guest must belong to that org's venues. The join now enforces this at the query level as defense-in-depth
+
+### Backend — Case-Insensitive Email Uniqueness (LOW)
+
+- **`auth.py` `register()`** and **`login()`**, **`users.py` `create_user()`** — email uniqueness checks and login lookups now use `func.lower(User.email) == body.email.lower()` instead of direct equality. Previously, `Test@Example.com` and `test@example.com` could register as separate accounts due to PostgreSQL's case-sensitive string comparison
+
+### Database — Migration 0015
+
+- Dropped duplicate index `ix_reservations_guest_id` on `reservations(guest_id)` — migration 0004 already created `ix_reservation_guest_id` on the same column; migration 0014 inadvertently added a second index with a slightly different name (plural vs singular). The redundant index added unnecessary write overhead on every INSERT/UPDATE to the reservations table
 
 ---
 
