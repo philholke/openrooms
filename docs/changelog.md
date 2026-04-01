@@ -4,6 +4,8 @@
 
 ## Index
 
+### 0.8.1 — Post-Phase 3 Quality Review (2026-04-01)
+### 0.8.0 — Phase 3: Table Management Complete (2026-04-01)
 ### 0.7.9 — Pre-Phase 3 Quality Review Round 7 (2026-04-01)
 ### 0.7.8 — Pre-Phase 3 Quality Review Round 6 (2026-04-01)
 ### 0.7.7 — Pre-Phase 3 Quality Review Round 5 (2026-03-31)
@@ -20,6 +22,105 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.8.1 — Post-Phase 3 Quality Review
+
+**Date**: 2026-04-01
+
+Quality review addressing 2 security findings (1 high, 1 medium) and 2 low-severity correctness fixes across backend and frontend.
+
+### Backend — Security: Server Assignment Org Isolation (HIGH)
+- **`DELETE /server-assignments/{id}`** now verifies the assignment's venue belongs to the requesting user's organization before deleting — previously accepted any valid UUID without org-scoping
+- **`upsert_assignment()`** now validates that the assigned user (`user_id`) belongs to the same organization as the venue — prevents cross-org staff assignment
+
+### Backend — Correctness: Report Service Error Handling (LOW)
+- **`report.py`** `generate_pre_shift_report()` now uses `scalar_one_or_none()` with an explicit 404 for missing venues instead of `scalar_one()` which would raise an unhandled `NoResultFound` → 500
+
+### Frontend — Correctness: Pacing Chart Division by Zero (LOW)
+- **`PacingChart`** guards against `maxCovers = 0` (when capacity and all booked covers are zero) by flooring `maxCovers` at 1 — prevents `NaN` bar heights
+
+---
+
+## 0.8.0 — Phase 3: Table Management (Complete)
+
+**Date**: 2026-04-01
+
+Complete Phase 3 implementing the visual floor plan and live seating system across 8 sub-phases (3A–3H). Full details in [`docs/completions/phase-3-table-management-completion.md`](completions/phase-3-table-management-completion.md). Plan in [`docs/phase-3-table-management-plan.md`](phase-3-table-management-plan.md).
+
+### Backend (Phase 3A: Complete CRUD)
+- **`FloorPlanUpdate` / `TableUpdate` schemas** — partial-update Pydantic schemas with cross-field capacity validation against existing DB values
+- **`update_floor_plan()` / `update_table()` services** — using `exclude_unset` pattern for partial updates
+- **`GET /floor-plans/{id}`** — staff+ endpoint to fetch a single floor plan
+- **`PATCH /floor-plans/{id}`** — admin+ endpoint to update floor plan name
+- **`PATCH /tables/{id}`** — manager+ endpoint to update table properties
+
+### Backend (Phase 3B: Table Status Engine)
+- **Migration 0007** — adds `held_until TIMESTAMPTZ NULL` to `tables` for the hold mechanism
+- **Table status computation** — `get_table_statuses()` computes status per table from reservation data: held (held_until future), occupied (seated reservation), reserved (confirmed/arrived within 30min), available (default)
+- **`GET /venues/{id}/table-statuses?date=`** — staff+ endpoint returning all venue tables with computed status, current guest name, party size, and next reservation time
+- **`PATCH /tables/{id}/hold`** — manager+ endpoint to set/clear `held_until` datetime
+- **`TableStatusRead` schema** — extends TableRead with `status`, `current_reservation_id`, `current_guest_name`, `current_party_size`, `next_reservation_time`
+
+### Frontend (Phase 3C: Floor Plan Management UI)
+- **Floor Plans list page** (`/dashboard/floor-plans`) — card grid with create/delete, navigates to detail page
+- **Floor Plan detail page** (`/dashboard/floor-plans/[id]`) — dual-view (canvas/list), inline rename, table CRUD
+- **TableForm modal** — create/edit table with label, capacity, section, shape fields
+- **FloorPlan and TableWithStatus types** added to `types.ts`
+- **Sidebar navigation** — added "Floor Plans" and "Seating" nav items
+
+### Frontend (Phase 3D: SVG Floor Plan Editor)
+- **FloorPlanCanvas** — SVG canvas with pan (pointer drag on background) and zoom (scroll wheel) via `viewBox` manipulation
+- **TableShape** — per-table SVG element (rect/circle) with drag-and-drop positioning via pointer events and `getScreenCTM().inverse()` coordinate conversion
+- **Grid snapping** — 10px increments via `snapToGrid()` utility
+- **TablePropertiesPanel** — side panel for editing selected table properties inline
+- **Batch layout save** — "Save Layout" button persists all moved table positions via parallel PATCH requests
+- **Canvas/List view toggle** — switch between visual editor and table list
+
+### Frontend (Phase 3E: Live Seating View)
+- **Seating page** (`/dashboard/seating`) — operational floor plan view with 15-second polling and exponential backoff
+- **Color-coded table status** — green (available), red (occupied), blue (reserved), yellow (held) with status legend
+- **Table info panel** — click any table to see status, guest name, party size, section, next reservation time
+- **Assign reservation** — click available table → modal showing unassigned reservations → one-click assignment via `PATCH /reservations/{id}`
+- **Hold/release** — hold table for 1 hour or release hold, both via `PATCH /tables/{id}/hold`
+- **Floor plan selector** — dropdown to switch between multiple floor plans per venue
+- **Date picker** — view table statuses for any date
+
+### Backend (Phase 3F: Server Section Assignments)
+- **`ServerAssignment` model** — lightweight per-shift model: `(venue_id, date, section, user_id)` with unique constraint on `(venue_id, date, section)`
+- **Migration 0008** — creates `server_assignments` table with composite index on `(venue_id, date)`
+- **Upsert semantics** — `POST /venues/{id}/server-assignments` updates existing assignment if one exists for that section+date, or creates a new one
+- **`GET /venues/{id}/server-assignments?date=`** — staff+ endpoint listing assignments with user names
+- **`DELETE /server-assignments/{id}`** — manager+ soft-delete
+
+### Frontend (Phase 3F: Server Section Assignments)
+- **ServerAssignmentPanel** — side panel on seating page with per-section staff dropdowns
+- **Servers toggle button** — shows/hides the assignment panel on the seating view
+- Populates sections from distinct `table.section` values in current floor plan
+
+### Backend (Phase 3G: Pacing)
+- **`GET /venues/{id}/pacing?date=`** — staff+ endpoint returning covers-per-slot histogram
+- **Pacing computation** — `SUM(party_size) GROUP BY time` for active reservations + total venue capacity from `SUM(max_capacity)` of active tables
+
+### Frontend (Phase 3G: Pacing View)
+- **Pacing page** (`/dashboard/pacing`) — date picker + SVG bar chart
+- **PacingChart** — pure SVG bar chart: blue bars for booked covers, red when over capacity, dashed red capacity threshold line
+- **Summary stats** — total booked covers, capacity, and number of time slots
+
+### Backend (Phase 3H: Pre-Shift Report)
+- **`GET /venues/{id}/pre-shift-report?date=`** — manager+ endpoint aggregating reservations with guest details, tags, visit counts, dietary restrictions, server assignments, and section summaries
+- **Per-entry data** — time, guest name, party size, table, section, status, special requests, notes, dietary restrictions, tags, visit count
+
+### Frontend (Phase 3H: Pre-Shift Report)
+- **Pre-shift report page** (`/dashboard/reports/pre-shift`) — date picker, print button, and structured report layout
+- **Section overview table** — section name, server, covers, table count
+- **Reservation table** — time, guest (with visit count + tags), party size, table, section, notes/dietary
+- **Print support** — `@media print` hides sidebar, top bar, and controls; clean table borders for paper output
+
+### Migrations
+- `0007_add_held_until_to_tables` — `held_until TIMESTAMPTZ NULL` column on `tables`
+- `0008_create_server_assignments` — new table with unique constraint and composite index
 
 ---
 

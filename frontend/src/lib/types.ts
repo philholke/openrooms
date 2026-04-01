@@ -183,6 +183,17 @@ export interface WaitlistEntry {
   guest: Guest | null;
 }
 
+// ─── Floor Plan ─────────────────────────────────────────────────────────
+
+export interface FloorPlan {
+  id: string;
+  venue_id: string;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Table ───────────────────────────────────────────────────────────────
 
 export interface Table {
@@ -192,5 +203,75 @@ export interface Table {
   min_capacity: number;
   max_capacity: number;
   section: string | null;
+  x_position: number | null;
+  y_position: number | null;
+  shape: string;
+  held_until: string | null;
   is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TableStatus = "available" | "occupied" | "reserved" | "held";
+
+export interface TableWithStatus extends Table {
+  status: TableStatus;
+  current_reservation_id: string | null;
+  current_guest_name: string | null;
+  current_party_size: number | null;
+  next_reservation_time: string | null;
+}
+
+// ─── Server Assignment ──────────────────────────────────────────────────
+
+export interface ServerAssignment {
+  id: string;
+  venue_id: string;
+  date: string;
+  section: string;
+  user_id: string;
+  user_name: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Pacing ─────────────────────────────────────────────────────────────
+
+export interface PacingSlot {
+  time: string;
+  booked_covers: number;
+  capacity: number;
+}
+
+// ─── Pre-Shift Report ───────────────────────────────────────────────────
+
+export interface SectionSummary {
+  section: string;
+  server_name: string | null;
+  covers: number;
+  table_count: number;
+}
+
+export interface PreShiftReportEntry {
+  time: string;
+  guest_name: string;
+  party_size: number;
+  table_label: string | null;
+  section: string | null;
+  status: string;
+  special_requests: string | null;
+  notes: string | null;
+  dietary_restrictions: string | null;
+  tags: string[];
+  visit_count: number;
+}
+
+export interface PreShiftReport {
+  date: string;
+  venue_name: string;
+  total_covers: number;
+  total_reservations: number;
+  sections: SectionSummary[];
+  entries: PreShiftReportEntry[];
 }

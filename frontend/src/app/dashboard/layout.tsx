@@ -11,6 +11,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 const NAV_ITEMS = [
   { href: "/dashboard/reservations", label: "Reservations" },
   { href: "/dashboard/waitlist", label: "Waitlist" },
+  { href: "/dashboard/floor-plans", label: "Floor Plans" },
+  { href: "/dashboard/seating", label: "Seating" },
+  { href: "/dashboard/pacing", label: "Pacing" },
+  { href: "/dashboard/reports/pre-shift", label: "Pre-Shift" },
 ];
 
 function VenueSelector() {

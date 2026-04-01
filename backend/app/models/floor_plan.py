@@ -1,6 +1,7 @@
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -45,6 +46,9 @@ class Table(TimestampMixin, Base):
     y_position: Mapped[float | None] = mapped_column(Float, nullable=True)
     shape: Mapped[str] = mapped_column(
         String(50), default="rectangle", server_default=text("'rectangle'")
+    )
+    held_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
 

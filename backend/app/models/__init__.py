@@ -6,6 +6,7 @@ from app.models.floor_plan import FloorPlan, Table
 from app.models.reservation import AccessRule, Reservation, WaitlistEntry
 from app.models.tag import Tag
 from app.models.survey import Survey
+from app.models.server_assignment import ServerAssignment
 
 __all__ = [
     "Organization",
@@ -21,4 +22,5 @@ __all__ = [
     "WaitlistEntry",
     "Tag",
     "Survey",
+    "ServerAssignment",
 ]
