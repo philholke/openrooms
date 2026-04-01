@@ -375,25 +375,37 @@ async def update_status(
             visited_at=datetime.now(timezone.utc),
         )
         db.add(visit)
+        await db.flush()  # Flush visit so auto-tag rules see current data
 
-        # Generate survey dispatch for post-visit feedback
-        await survey_service.generate_survey_dispatch(
-            db,
-            venue_id=reservation.venue_id,
-            reservation_id=reservation.id,
-            guest_id=reservation.guest_id,
-        )
+        # Non-critical side effects: failures here must not roll back the
+        # reservation status change or the guest visit record.
+        try:
+            await survey_service.generate_survey_dispatch(
+                db,
+                venue_id=reservation.venue_id,
+                reservation_id=reservation.id,
+                guest_id=reservation.guest_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to generate survey dispatch for reservation %s",
+                reservation.id,
+            )
 
-        # Evaluate auto-tag rules for this guest
-        # (org_id is on the guest, fetch it via the reservation's venue)
-        from app.models.venue import Venue
-        venue_result = await db.execute(
-            select(Venue.org_id).where(Venue.id == reservation.venue_id)
-        )
-        org_id = venue_result.scalar_one()
-        await auto_tag_service.evaluate_rules_for_guest(
-            db, reservation.guest_id, org_id,
-        )
+        try:
+            from app.models.venue import Venue
+            venue_result = await db.execute(
+                select(Venue.org_id).where(Venue.id == reservation.venue_id)
+            )
+            org_id = venue_result.scalar_one()
+            await auto_tag_service.evaluate_rules_for_guest(
+                db, reservation.guest_id, org_id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to evaluate auto-tag rules for guest %s",
+                reservation.guest_id,
+            )
 
     if new_status == "cancelled":
         reservation.cancelled_at = datetime.now(timezone.utc)

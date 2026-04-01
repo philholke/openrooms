@@ -83,6 +83,7 @@ class Reservation(TimestampMixin, Base):
     )
     guest_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("guest_profiles.id", ondelete="CASCADE"),
+        index=True,
         nullable=False,
     )
     table_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -128,6 +129,7 @@ class WaitlistEntry(TimestampMixin, Base):
     )
     venue_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("venues.id", ondelete="CASCADE"),
+        index=True,
         nullable=False,
     )
     guest_id: Mapped[uuid.UUID] = mapped_column(

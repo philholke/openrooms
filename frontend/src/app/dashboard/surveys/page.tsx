@@ -38,7 +38,7 @@ export default function SurveyDashboardPage() {
 
       const [statsRes, surveysRes] = await Promise.all([
         api.get<SurveyStats>(`/venues/${venue.id}/surveys/stats?${params}`),
-        api.get<Survey[]>(`/venues/${venue.id}/surveys?per_page=10`),
+        api.get<Survey[]>(`/venues/${venue.id}/surveys?per_page=10&${params}`),
       ]);
 
       setStats(statsRes.data);

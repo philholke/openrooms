@@ -100,8 +100,12 @@ export default function GuestDetailPage() {
                 key={tag.id}
                 tag={tag}
                 onRemove={tag.is_auto ? undefined : async () => {
-                  await api.delete(`/guests/${id}/tags/${tag.id}`);
-                  fetchGuest();
+                  try {
+                    await api.delete(`/guests/${id}/tags/${tag.id}`);
+                    fetchGuest();
+                  } catch {
+                    setError("Failed to remove tag");
+                  }
                 }}
               />
             ))}
@@ -228,8 +232,7 @@ function TagPill({ tag, onRemove }: { tag: Tag; onRemove?: () => void }) {
 function Stars({ rating }: { rating: number }) {
   return (
     <span className="text-sm" aria-label={`${rating} out of 5 stars`}>
-      {"*".repeat(rating)}{"*".repeat(5 - rating).replace(/\*/g, "")}
-      <span className="text-yellow-400">{"*".repeat(rating).replace(/\*/g, "\u2605")}</span>
+      <span className="text-yellow-400">{"\u2605".repeat(rating)}</span>
       <span className="text-gray-300">{"\u2605".repeat(5 - rating)}</span>
     </span>
   );
@@ -340,13 +343,20 @@ function AddTagModal({
       .finally(() => setLoading(false));
   }, [existingTagIds]);
 
+  const [addError, setAddError] = useState<string | null>(null);
+
   const handleAdd = async (tagId: string) => {
-    await api.post(`/guests/${guestId}/tags`, { tag_id: tagId });
-    onAdded();
+    try {
+      await api.post(`/guests/${guestId}/tags`, { tag_id: tagId });
+      onAdded();
+    } catch {
+      setAddError("Failed to add tag");
+    }
   };
 
   return (
     <Modal open onClose={onClose} title="Add Tag">
+      {addError && <p className="mb-2 text-sm text-red-600">{addError}</p>}
       {loading ? (
         <p className="py-4 text-center text-sm text-gray-400">Loading tags...</p>
       ) : tags.length === 0 ? (

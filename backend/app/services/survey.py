@@ -248,13 +248,20 @@ async def submit_public_survey(
         survey.id, dispatch.venue_id, dispatch.guest_id, data.overall_rating,
     )
 
-    # Evaluate auto-tag rules (rating-based rules can fire immediately)
-    from app.services import auto_tag as auto_tag_service
-    venue_result = await db.execute(
-        select(Venue.org_id).where(Venue.id == dispatch.venue_id)
-    )
-    org_id = venue_result.scalar_one()
-    await auto_tag_service.evaluate_rules_for_guest(db, dispatch.guest_id, org_id)
+    # Evaluate auto-tag rules (rating-based rules can fire immediately).
+    # Non-critical: failure must not roll back the survey submission.
+    try:
+        from app.services import auto_tag as auto_tag_service
+        venue_result = await db.execute(
+            select(Venue.org_id).where(Venue.id == dispatch.venue_id)
+        )
+        org_id = venue_result.scalar_one()
+        await auto_tag_service.evaluate_rules_for_guest(db, dispatch.guest_id, org_id)
+    except Exception:
+        logger.exception(
+            "Failed to evaluate auto-tag rules after survey submission for guest %s",
+            dispatch.guest_id,
+        )
 
     return SurveyRead.model_validate(survey)
 
@@ -287,14 +294,14 @@ async def get_survey_stats(
     agg = agg_result.one()
 
     # Rating distribution (1-5) — reuse base subquery for consistency
+    sub = base.subquery()
     dist_result = await db.execute(
         select(
-            Survey.overall_rating.label("rating"),
+            sub.c.overall_rating.label("rating"),
             func.count().label("count"),
         )
-        .select_from(base.subquery())
-        .group_by(Survey.overall_rating)
-        .order_by(Survey.overall_rating)
+        .group_by(sub.c.overall_rating)
+        .order_by(sub.c.overall_rating)
     )
     dist_rows = dist_result.all()
 

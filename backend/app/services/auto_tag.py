@@ -225,13 +225,17 @@ async def evaluate_rules_for_guest(
     return applied, removed
 
 
+_BATCH_SIZE = 500
+
+
 async def evaluate_all_rules(
     db: AsyncSession,
     org_id: uuid.UUID,
 ) -> BulkEvaluateResult:
     """
     Run all active auto-tag rules against every guest in the org.
-    Used for backfill after creating new rules.
+    Used for backfill after creating new rules. Processes guests in
+    batches to avoid unbounded query volume and long-held transactions.
     """
     # Load all active rules
     rules_result = await db.execute(
@@ -254,10 +258,14 @@ async def evaluate_all_rules(
     total_applied = 0
     total_removed = 0
 
-    for guest_id in guest_ids:
-        applied, removed = await evaluate_rules_for_guest(db, guest_id, org_id)
-        total_applied += applied
-        total_removed += removed
+    for i in range(0, len(guest_ids), _BATCH_SIZE):
+        batch = guest_ids[i : i + _BATCH_SIZE]
+        for guest_id in batch:
+            applied, removed = await evaluate_rules_for_guest(db, guest_id, org_id)
+            total_applied += applied
+            total_removed += removed
+        # Flush after each batch to persist progress and release row locks
+        await db.flush()
 
     logger.info(
         "Bulk auto-tag evaluation for org %s: guests=%d applied=%d removed=%d",

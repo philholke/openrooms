@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.9.1 — Post-Phase 4 Quality Review (2026-04-01)
 ### 0.9.0 — Phase 4: CRM & Guest Profiles + Post-Visit Surveys (2026-04-01)
 ### 0.8.3 — Pre-Phase 4 Quality Review Round 2 (2026-04-01)
 ### 0.8.2 — Pre-Phase 4 Quality Review (2026-04-01)
@@ -25,6 +26,44 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.9.1 — Post-Phase 4 Quality Review
+
+**Date**: 2026-04-01
+
+Quality review addressing 12 findings (2 high, 7 medium, 3 low) across backend services, API routes, frontend components, database indexes, and integration wiring. Focuses on data correctness, error isolation, query correctness, and missing indexes.
+
+### Backend — Bug Fixes
+
+- **`reservation.py` `update_status()`** — moved `db.flush()` before auto-tag evaluation so the newly created `GuestVisit` is visible to `_get_guest_stats()`. Previously, visit-count and spend-based auto-tag rules saw stale data (N-1 visits instead of N) because the visit was added to the session but not yet flushed when `evaluate_rules_for_guest()` ran
+- **`survey.py` `get_survey_stats()`** — fixed distribution query to use `sub.c.overall_rating` from the subquery alias instead of referencing `Survey.overall_rating` from the original ORM table. The prior pattern could produce incorrect SQL when selecting from a subquery but grouping/ordering by the base table column
+- **`surveys.py` rate limiter** — replaced standalone `Limiter(key_func=get_remote_address)` instance with the shared one from `app.core.limiter`. The previous separate instance was not registered on `app.state.limiter`, so the `@limiter.limit()` decorators on the unauthenticated public survey endpoints were not enforcing rate limits. Extracted limiter into new `app/core/limiter.py` module imported by both `main.py` and `surveys.py`
+
+### Backend — Error Isolation
+
+- **`reservation.py` `update_status()`** — wrapped survey dispatch generation and auto-tag evaluation in individual `try/except` blocks. Previously, a failure in either non-critical side effect (e.g., a malformed auto-tag rule or an integrity error on duplicate dispatch) would roll back the entire transaction, preventing the reservation from reaching `"completed"` status
+- **`survey.py` `submit_public_survey()`** — wrapped post-submission auto-tag evaluation in `try/except`. Previously, a failure in rule evaluation would roll back the survey creation, causing the guest to lose their feedback submission
+
+### Backend — Performance
+
+- **`auto_tag.py` `evaluate_all_rules()`** — added batched processing with `_BATCH_SIZE = 500`. Previously the function loaded every guest ID in the org and evaluated each sequentially in a single unbounded loop (3+ queries per guest × N guests), risking request timeouts and long-held database connections. Now flushes after each batch to persist progress and release row locks
+
+### Database — Migration 0014
+
+- Added missing FK indexes: `ix_surveys_venue_id`, `ix_surveys_guest_id`, `ix_surveys_reservation_id` on `surveys` table
+- Added missing FK index: `ix_reservations_guest_id` on `reservations` table
+- Added missing FK index: `ix_waitlist_entries_venue_id` on `waitlist_entries` table
+- Added unique index: `uq_survey_dispatches_reservation_id` on `survey_dispatches` table — prevents duplicate survey dispatch tokens for the same reservation from concurrent or retried completion calls
+- Updated corresponding SQLAlchemy models (`Survey`, `SurveyDispatch`, `Reservation`, `WaitlistEntry`) to reflect `index=True` and `unique=True` in column definitions
+
+### Frontend — Bug Fixes
+
+- **`guests/[id]/page.tsx` `Stars` component** — removed literal asterisk characters (`"*".repeat(rating)`) that were rendered before the unicode star icons, producing visible `***` text in the guest detail survey section
+- **`survey/[token]/page.tsx` `handleSubmit`** — added client-side validation preventing submission when no overall rating is selected. Previously, an empty hidden input sent `overall_rating: 0` which the backend rejected with a generic 422 (the backend `ge=1` constraint caught it, but the user saw no clear error message)
+- **`guests/[id]/page.tsx` tag operations** — wrapped tag add and remove API calls in `try/catch` blocks with error state feedback. Previously, failed tag operations caused unhandled promise rejections with no user-visible error message
+- **`surveys/page.tsx` date filter** — applied `date_from` query parameter to both the stats request and the recent responses list request. Previously, the date preset only filtered the aggregate stats while "Recent Responses" always showed the latest 10 regardless of the selected time window
 
 ---
 

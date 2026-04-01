@@ -17,14 +17,17 @@ class Survey(TimestampMixin, Base):
     )
     venue_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("venues.id", ondelete="CASCADE"),
+        index=True,
         nullable=False,
     )
     reservation_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("reservations.id", ondelete="SET NULL"),
+        index=True,
         nullable=True,
     )
     guest_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("guest_profiles.id", ondelete="CASCADE"),
+        index=True,
         nullable=False,
     )
     overall_rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-5
@@ -59,6 +62,7 @@ class SurveyDispatch(TimestampMixin, Base):
     )
     reservation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("reservations.id", ondelete="CASCADE"),
+        unique=True,
         nullable=False,
     )
     guest_id: Mapped[uuid.UUID] = mapped_column(

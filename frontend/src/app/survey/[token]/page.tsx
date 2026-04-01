@@ -28,8 +28,14 @@ export default function PublicSurveyPage() {
     setError(null);
 
     const form = new FormData(e.currentTarget);
+    const overallRaw = form.get("overall_rating") as string;
+    if (!overallRaw || Number(overallRaw) < 1) {
+      setError("Please select an overall rating.");
+      setSubmitting(false);
+      return;
+    }
     const body: Record<string, unknown> = {
-      overall_rating: Number(form.get("overall_rating")),
+      overall_rating: Number(overallRaw),
     };
     for (const field of ["food_rating", "service_rating", "ambiance_rating", "drinks_rating"]) {
       const val = form.get(field) as string;

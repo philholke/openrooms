@@ -2,13 +2,12 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_org, require_role
+from app.core.limiter import limiter
 from app.models.organization import Organization
 from app.models.survey import Survey
 from app.models.user import User
@@ -22,8 +21,6 @@ from app.schemas.survey import (
 )
 from app.services import survey as survey_service
 from app.api.v1.venues import _get_venue_or_404
-
-limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(tags=["surveys"])
 
 
