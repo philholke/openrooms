@@ -8,7 +8,7 @@ class TagCreate(BaseModel):
     name: str = Field(..., max_length=255)
     color: str | None = Field(None, max_length=7)
     is_auto: bool = False
-    description: str | None = None
+    description: str | None = Field(None, max_length=2000)
 
     @field_validator("color")
     @classmethod
@@ -23,7 +23,7 @@ class TagCreate(BaseModel):
 class TagUpdate(BaseModel):
     name: str | None = Field(None, max_length=255)
     color: str | None = Field(None, max_length=7)
-    description: str | None = None
+    description: str | None = Field(None, max_length=2000)
 
     @field_validator("color")
     @classmethod

@@ -1,6 +1,9 @@
 import uuid
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,10 +13,17 @@ from app.models.organization import Organization
 from app.models.survey import Survey
 from app.models.user import User
 from app.schemas.envelope import Envelope, PaginatedEnvelope, ok, paginated
-from app.schemas.survey import SurveyCreate, SurveyRead
+from app.schemas.survey import (
+    SurveyCreate,
+    SurveyPublicInfo,
+    SurveyPublicSubmit,
+    SurveyRead,
+    SurveyStats,
+)
 from app.services import survey as survey_service
 from app.api.v1.venues import _get_venue_or_404
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(tags=["surveys"])
 
 
@@ -75,4 +85,57 @@ async def get_survey(
     db: AsyncSession = Depends(get_db),
 ):
     survey = await survey_service.get_survey(db, survey_id, org_id=org.id)
+    return ok(survey)
+
+
+# ─── Survey stats ────────────────────────────────────────────────────────
+
+@router.get(
+    "/venues/{venue_id}/surveys/stats",
+    response_model=Envelope[SurveyStats],
+)
+async def get_survey_stats(
+    venue_id: uuid.UUID,
+    date_from: datetime | None = Query(None, description="Start date (ISO 8601)"),
+    date_to: datetime | None = Query(None, description="End date (ISO 8601)"),
+    org: Organization = Depends(get_current_org),
+    _user: User = Depends(require_role("staff")),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_venue_or_404(db, venue_id, org.id)
+    stats = await survey_service.get_survey_stats(
+        db, venue_id, date_from=date_from, date_to=date_to,
+    )
+    return ok(stats)
+
+
+# ─── Public survey endpoints (no auth) ───────────────────────────────────
+
+@router.get(
+    "/public/surveys/{token}",
+    response_model=Envelope[SurveyPublicInfo],
+)
+@limiter.limit("30/minute")
+async def get_public_survey(
+    request: Request,
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    info = await survey_service.get_dispatch_info(db, token)
+    return ok(info)
+
+
+@router.post(
+    "/public/surveys/{token}",
+    response_model=Envelope[SurveyRead],
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("5/minute")
+async def submit_public_survey(
+    request: Request,
+    token: str,
+    body: SurveyPublicSubmit,
+    db: AsyncSession = Depends(get_db),
+):
+    survey = await survey_service.submit_public_survey(db, token, body)
     return ok(survey)

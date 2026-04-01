@@ -34,3 +34,4 @@ class Organization(TimestampMixin, Base):
     users: Mapped[list["User"]] = relationship(back_populates="organization")  # noqa: F821
     guest_profiles: Mapped[list["GuestProfile"]] = relationship(back_populates="organization")  # noqa: F821
     tags: Mapped[list["Tag"]] = relationship(back_populates="organization")  # noqa: F821
+    auto_tag_rules: Mapped[list["AutoTagRule"]] = relationship(back_populates="organization")  # noqa: F821

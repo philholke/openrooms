@@ -25,6 +25,8 @@ from app.schemas.reservation import (
 )
 from app.services.availability import get_available_slots
 from app.services.guest import get_or_create_guest
+from app.services import auto_tag as auto_tag_service
+from app.services import survey as survey_service
 
 # ─── Status Machine ──────────────────────────────────────────────────────
 
@@ -373,6 +375,25 @@ async def update_status(
             visited_at=datetime.now(timezone.utc),
         )
         db.add(visit)
+
+        # Generate survey dispatch for post-visit feedback
+        await survey_service.generate_survey_dispatch(
+            db,
+            venue_id=reservation.venue_id,
+            reservation_id=reservation.id,
+            guest_id=reservation.guest_id,
+        )
+
+        # Evaluate auto-tag rules for this guest
+        # (org_id is on the guest, fetch it via the reservation's venue)
+        from app.models.venue import Venue
+        venue_result = await db.execute(
+            select(Venue.org_id).where(Venue.id == reservation.venue_id)
+        )
+        org_id = venue_result.scalar_one()
+        await auto_tag_service.evaluate_rules_for_guest(
+            db, reservation.guest_id, org_id,
+        )
 
     if new_status == "cancelled":
         reservation.cancelled_at = datetime.now(timezone.utc)

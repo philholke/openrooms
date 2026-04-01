@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.9.0 — Phase 4: CRM & Guest Profiles + Post-Visit Surveys (2026-04-01)
 ### 0.8.3 — Pre-Phase 4 Quality Review Round 2 (2026-04-01)
 ### 0.8.2 — Pre-Phase 4 Quality Review (2026-04-01)
 ### 0.8.1 — Post-Phase 3 Quality Review (2026-04-01)
@@ -24,6 +25,88 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.9.0 — Phase 4: CRM & Guest Profiles + Post-Visit Surveys (Complete)
+
+**Date**: 2026-04-01
+
+Complete Phase 4 implementing the CRM guest profile system, tag management with auto-tag rule engine, public post-visit surveys, and reactive integration across 9 sub-phases (4A–4I). Full details in `docs/completions/phase-4a-guest-crud-completion.md` through `phase-4i-quality-review-completion.md`.
+
+### Backend (Phase 4A: Guest CRUD & Profile API)
+- **`list_guests()`** — paginated guest listing with ILIKE search (name/email), tag filter, venue filter (via visits), and batch-computed visit counts via single `GROUP BY` query
+- **`get_guest_detail()`** — full profile load with `selectinload` tags, last 10 visits with venue names, last 5 surveys, aggregate stats (total visits, last visit date, avg rating)
+- **`create_guest()`** — manual profile creation with email dedup pre-check + SAVEPOINT for concurrent race safety
+- **`update_guest()`** — partial update via `exclude_unset` pattern with email uniqueness enforcement
+- **`_escape_like()`** — escapes `%`, `_`, `\` for safe ILIKE patterns
+- **`GET /guests`** (staff+), **`POST /guests`** (manager+), **`GET /guests/{id}`** (staff+), **`PATCH /guests/{id}`** (manager+)
+- Two read schemas: lightweight `GuestListRead` (tag names as strings, visit count) vs full `GuestDetailRead` (relationships, aggregates) — avoids N+1 and heavy payloads
+
+### Backend (Phase 4B: Tag CRUD & Manual Tagging)
+- **`list_tags()`** — paginated with optional `is_auto` filter, sorted by name
+- **`create_tag()`** — SAVEPOINT for duplicate `(org_id, name)` race safety → 409
+- **`update_tag()`** — partial update, name uniqueness checked, cannot change `is_auto`
+- **`delete_tag()`** — hard-delete with CASCADE to `guest_tags` join table
+- **`add_tag_to_guest()`** — idempotent SAVEPOINT insert; rejects auto-tags with 422 to maintain engine ownership
+- **`remove_tag_from_guest()`** — validates both tag and guest belong to requesting org (defense-in-depth)
+- **`GET /tags`** (staff+), **`POST /tags`** (manager+), **`PATCH /tags/{id}`** (manager+), **`DELETE /tags/{id}`** (admin+)
+- **`POST /guests/{id}/tags`** (staff+), **`DELETE /guests/{id}/tags/{tag_id}`** (staff+)
+
+### Backend (Phase 4C: Auto-Tag Rule Engine)
+- **`AutoTagRule` model** — 1:1 with Tag, stores JSONB `conditions` column validated against `AutoTagConditions` Pydantic model
+- **10 condition types** (AND-combined): `visit_count_gte/lte`, `last_visit_within_days`, `last_visit_not_within_days`, `total_spend_gte`, `avg_rating_gte/lte`, `has_tag`, `not_has_tag`, `venue_id` (scope to venue)
+- **`_get_guest_stats()`** — gathers visit count, last visit date, total spend, avg rating, current tags in 3 queries (not per-rule — scales N+M instead of N×M)
+- **`evaluate_rules_for_guest()`** — evaluates all active org rules against one guest; bidirectionally applies/removes tags as conditions change
+- **`evaluate_all_rules()`** — bulk evaluation across all org guests; returns counts of guests/tags modified
+- **`GET /tags/{id}/rule`** (manager+), **`PUT /tags/{id}/rule`** (manager+, upsert), **`DELETE /tags/{id}/rule`** (admin+), **`POST /tags/evaluate`** (admin+, bulk)
+- JSONB conditions with `exclude_none` storage — adding new condition types requires only a schema field, no migration
+
+### Backend (Phase 4D: Public Survey Submission & Link Generation)
+- **`SurveyDispatch` model** — tracks dispatch→survey lifecycle; token generated on reservation completion, consumed on guest submission
+- **`generate_survey_dispatch()`** — creates `secrets.token_urlsafe(32)` dispatch (256-bit entropy, single-use)
+- **`get_dispatch_info()`** — returns public-safe info (venue name, guest first name, reservation date); 404 if invalid or already submitted
+- **`submit_public_survey()`** — creates Survey, links to dispatch, marks `submitted_at`; acquires `FOR UPDATE` lock to prevent duplicate submissions from concurrent requests
+- **`get_survey_stats()`** — aggregated ratings (5 dimensions), total count, rating distribution histogram (1–5 with zero-fill); distribution reuses base subquery for filter consistency
+- **`GET /public/surveys/{token}`** (no auth, 30/min), **`POST /public/surveys/{token}`** (no auth, 5/min), **`GET /venues/{id}/surveys/stats`** (staff+)
+
+### Backend (Phase 4H: Integration Wiring)
+- **Reservation completion** (`update_status` → `"completed"`) now triggers: GuestVisit creation (existing) → `generate_survey_dispatch()` → `evaluate_rules_for_guest()`
+- **Public survey submission** now triggers: Survey creation → `evaluate_rules_for_guest()` (rating-based rules fire immediately)
+- org_id resolved via lightweight `SELECT org_id FROM venues` query; inline imports to avoid circular dependencies
+
+### Backend (Phase 4I: Quality Review — 0 high, 5 medium, 1 low)
+- **`submit_public_survey()`** — added `FOR UPDATE` lock on SurveyDispatch fetch, preventing duplicate survey creation from concurrent double-click POSTs
+- **`get_survey_stats()`** — distribution query refactored to use `.select_from(base.subquery())` instead of reconstructing filters inline with `True` literals
+- **`remove_tag_from_guest()`** — added tag org-scope validation, matching `add_tag_to_guest()` defense-in-depth pattern
+- **`delete_auto_tag_rule`** — added `_get_auto_tag_or_404()` call, consistent with `get_auto_tag_rule` and `upsert_auto_tag_rule`
+- **`TagCreate.description`** and **`TagUpdate.description`** — capped at `max_length=2000` via `Field()`
+- **Migration 0013** — adds missing FK index `ix_survey_dispatches_guest_id`
+
+### Frontend (Phase 4E: Guest CRM)
+- **Guest list page** (`/dashboard/guests`) — search bar with 300ms debounce, tag filter dropdown, paginated table with name/email/phone/visits/tags, "Add Guest" modal
+- **Guest detail page** (`/dashboard/guests/[id]`) — stats bar (visits, last visit, avg rating, member since), editable profile section (birthday, anniversary, dietary, notes), tag pills with add/remove (blue=auto, gray=manual), visit timeline (last 10), survey responses (last 5)
+
+### Frontend (Phase 4F: Tag Management)
+- **Tag management page** (`/dashboard/tags`) — tabbed Manual/Auto view with 3-column card grid, color swatches, edit/delete modals with confirmation
+- **Auto-tag rule editor** — condition builder modal with labeled fields for all 9 condition types, saves via PUT upsert, empty fields excluded from JSONB
+- **Bulk evaluate button** — triggers `POST /tags/evaluate`, displays result toast with counts
+- **`api.put()` method** added to API client
+
+### Frontend (Phase 4G: Public Survey & Dashboard)
+- **Public survey page** (`/survey/[token]`) — unauthenticated form fetching venue/guest/date context, interactive star rating inputs (5 dimensions), comment textarea, submit → thank-you confirmation, error state for invalid/consumed tokens
+- **Survey dashboard** (`/dashboard/surveys`) — date range presets (7/30/90 days, all-time), 6-column stats grid (5 avg ratings + total count), rating distribution bar chart, recent responses table
+
+### Frontend — Navigation
+- **Dashboard sidebar** — added Guests, Tags, Surveys nav items in layout
+
+### Types
+- **15+ TypeScript interfaces** added: `Tag`, `AutoTagConditions`, `AutoTagRule`, `BulkEvaluateResult`, `GuestListItem`, `GuestDetail`, `GuestVisit`, `Survey`, `SurveyStats`, `SurveyPublicInfo`, `RatingDistribution`, and more
+
+### Migrations
+- `0011_create_auto_tag_rules` — `auto_tag_rules` table with JSONB conditions, unique constraint on `tag_id`, FK index on `org_id`
+- `0012_create_survey_dispatches` — `survey_dispatches` table with token unique index, FK indexes on `venue_id`, `reservation_id`
+- `0013_add_survey_dispatches_guest_index` — FK index on `survey_dispatches(guest_id)`
 
 ---
 

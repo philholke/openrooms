@@ -244,6 +244,119 @@ export interface PacingSlot {
   capacity: number;
 }
 
+// ─── Tag ────────────────────────────────────────────────────────────────
+
+export interface Tag {
+  id: string;
+  org_id: string;
+  name: string;
+  color: string | null;
+  is_auto: boolean;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AutoTagConditions {
+  visit_count_gte?: number | null;
+  visit_count_lte?: number | null;
+  last_visit_within_days?: number | null;
+  last_visit_not_within_days?: number | null;
+  total_spend_gte?: number | null;
+  avg_rating_gte?: number | null;
+  avg_rating_lte?: number | null;
+  has_tag?: string | null;
+  not_has_tag?: string | null;
+  venue_id?: string | null;
+}
+
+export interface AutoTagRule {
+  id: string;
+  tag_id: string;
+  org_id: string;
+  conditions: AutoTagConditions;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BulkEvaluateResult {
+  guests_evaluated: number;
+  tags_applied: number;
+  tags_removed: number;
+}
+
+// ─── Guest CRM ──────────────────────────────────────────────────────────
+
+export interface GuestListItem {
+  id: string;
+  org_id: string;
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  total_visits: number;
+  tag_names: string[];
+  created_at: string;
+}
+
+export interface GuestVisit {
+  id: string;
+  venue_id: string;
+  venue_name: string;
+  reservation_id: string | null;
+  visited_at: string;
+  spend_amount: number | null;
+  notes: string | null;
+}
+
+export interface Survey {
+  id: string;
+  venue_id: string;
+  guest_id: string;
+  reservation_id: string | null;
+  overall_rating: number;
+  food_rating: number | null;
+  service_rating: number | null;
+  ambiance_rating: number | null;
+  drinks_rating: number | null;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GuestDetail extends Guest {
+  tags: Tag[];
+  visits: GuestVisit[];
+  surveys: Survey[];
+  total_visits: number;
+  last_visit_date: string | null;
+  avg_overall_rating: number | null;
+}
+
+// ─── Survey Stats ───────────────────────────────────────────────────────
+
+export interface RatingDistribution {
+  rating: number;
+  count: number;
+}
+
+export interface SurveyStats {
+  total_responses: number;
+  avg_overall: number | null;
+  avg_food: number | null;
+  avg_service: number | null;
+  avg_ambiance: number | null;
+  avg_drinks: number | null;
+  distribution: RatingDistribution[];
+}
+
+export interface SurveyPublicInfo {
+  venue_name: string;
+  guest_first_name: string;
+  reservation_date: string;
+}
+
 // ─── Pre-Shift Report ───────────────────────────────────────────────────
 
 export interface SectionSummary {

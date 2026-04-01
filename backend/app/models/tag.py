@@ -32,3 +32,4 @@ class Tag(TimestampMixin, Base):
         secondary="guest_tags",
         back_populates="tags",
     )
+    auto_tag_rule: Mapped["AutoTagRule | None"] = relationship(back_populates="tag")  # noqa: F821
