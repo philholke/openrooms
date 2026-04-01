@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.8.3 — Pre-Phase 4 Quality Review Round 2 (2026-04-01)
 ### 0.8.2 — Pre-Phase 4 Quality Review (2026-04-01)
 ### 0.8.1 — Post-Phase 3 Quality Review (2026-04-01)
 ### 0.8.0 — Phase 3: Table Management Complete (2026-04-01)
@@ -23,6 +24,44 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.8.3 — Pre-Phase 4 Quality Review Round 2
+
+**Date**: 2026-04-01
+
+Quality review addressing 11 findings (0 high, 6 medium, 5 low) across backend models, services, infrastructure, and frontend. Focuses on relationship consistency, defense-in-depth org scoping, exception narrowing, and React pattern correctness.
+
+### Backend — Models: Bidirectional Relationship Consistency (MEDIUM × 3)
+- **`GuestVisit.venue`** and **`GuestVisit.reservation`** now declare `back_populates` with matching reverse relationships on `Venue.guest_visits` and `Reservation.guest_visits` — previously unidirectional, inconsistent with all other model relationships
+- **`Reservation.table`** now declares `back_populates="reservations"` with a matching `Table.reservations` relationship — enables navigation from `Table` → its assigned reservations
+- **`ServerAssignment.venue`** and **`ServerAssignment.user`** now declare `back_populates` with matching `Venue.server_assignments` and `User.server_assignments` relationships — completes the bidirectional relationship graph
+
+### Backend — Services: Defense-in-Depth Org Scoping (MEDIUM × 2)
+- **`get_table()`** now accepts optional `venue_id` and validates ownership via `FloorPlan → venue_id` join — previously only scoped by `table_id`, relying entirely on API-layer checks
+- **`list_tables()`** now requires `venue_id` and validates the floor plan belongs to the correct venue via join — previously trusted `floor_plan_id` without ownership verification
+- **API route `list_tables`** updated to pass `venue_id` from the verified floor plan to the service call
+
+### Backend — Services: Exception Narrowing (LOW)
+- **`availability.py`** timezone fallbacks narrowed from `except (KeyError, Exception)` to `except KeyError` — overly broad catch was masking unexpected errors behind a silent UTC fallback
+
+### Backend — Infrastructure: Automatic Migration Execution (MEDIUM)
+- **`entrypoint.sh`** — new entrypoint script runs `alembic upgrade head` before starting the application server, ensuring schema is always in sync with code on container startup
+- **`Dockerfile`** updated with `ENTRYPOINT ["./entrypoint.sh"]` wrapping the existing `CMD`
+
+### Backend — Infrastructure: Configurable Connection Pool (LOW)
+- **`config.py`** now exposes `DB_POOL_SIZE` (default: 10) and `DB_MAX_OVERFLOW` (default: 20) as environment-configurable settings
+- **`database.py`** engine reads pool parameters from settings instead of hardcoded values
+
+### Frontend — React: Polling Effect Dependency Cleanup (LOW)
+- **Reservations, seating, and waitlist pages** — removed `eslint-disable-next-line react-hooks/exhaustive-deps` comments; callbacks now included in dependency arrays where the underlying `useCallback` deps were already stable primitives
+
+### Frontend — React: TablePropertiesPanel State Sync (LOW)
+- **`TablePropertiesPanel`** replaced render-time conditional state sync with a proper `useEffect` keyed on `table.id` and table properties
+
+### Frontend — Accessibility: SVG Table Shapes (LOW)
+- **`TableShape`** `<g>` wrapper now declares `role="button"` and `aria-label` — interactive SVG elements are now identifiable by screen readers
 
 ---
 

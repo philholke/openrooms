@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import type { Table } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
@@ -34,14 +34,14 @@ export function TablePropertiesPanel({
   const [shape, setShape] = useState(table.shape);
 
   // Re-sync when a different table is selected
-  if (table.label !== label && !saving) {
+  useEffect(() => {
     setLabel(table.label);
     setMinCap(String(table.min_capacity));
     setMaxCap(String(table.max_capacity));
     setSection(table.section || "");
     setShape(table.shape);
     setError("");
-  }
+  }, [table.id, table.label, table.min_capacity, table.max_capacity, table.section, table.shape]);
 
   const handleSave = async () => {
     setSaving(true);

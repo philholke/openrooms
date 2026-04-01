@@ -62,8 +62,7 @@ export default function WaitlistPage() {
       controller.abort();
       clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue?.id]);
+  }, [venue?.id, fetchEntries]);
 
   const [actionError, setActionError] = useState<string | null>(null);
 

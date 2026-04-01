@@ -36,5 +36,5 @@ class ServerAssignment(TimestampMixin, Base):
     )
 
     # Relationships
-    venue: Mapped["Venue"] = relationship()  # noqa: F821
-    user: Mapped["User"] = relationship()  # noqa: F821
+    venue: Mapped["Venue"] = relationship(back_populates="server_assignments")  # noqa: F821
+    user: Mapped["User"] = relationship(back_populates="server_assignments")  # noqa: F821

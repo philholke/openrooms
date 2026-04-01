@@ -155,8 +155,8 @@ async def list_tables(
     _user: User = Depends(require_role("staff")),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_floor_plan_org(db, floor_plan_id, org.id)
-    tables = await floor_plan_service.list_tables(db, floor_plan_id)
+    fp = await _verify_floor_plan_org(db, floor_plan_id, org.id)
+    tables = await floor_plan_service.list_tables(db, floor_plan_id, fp.venue_id)
     return ok(tables)
 
 

@@ -36,3 +36,4 @@ class User(TimestampMixin, Base):
 
     # Relationships
     organization: Mapped["Organization"] = relationship(back_populates="users")  # noqa: F821
+    server_assignments: Mapped[list["ServerAssignment"]] = relationship(back_populates="user")  # noqa: F821

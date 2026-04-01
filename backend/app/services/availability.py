@@ -46,7 +46,7 @@ async def get_available_slots(
     try:
         from zoneinfo import ZoneInfo
         today = datetime.now(ZoneInfo(venue_timezone)).date()
-    except (KeyError, Exception) as exc:
+    except KeyError as exc:
         logger.warning(
             "Invalid venue timezone '%s' for date calculation, falling back to UTC: %s",
             venue_timezone, exc,
@@ -90,8 +90,7 @@ async def get_available_slots(
     try:
         from zoneinfo import ZoneInfo
         venue_now = now_utc.astimezone(ZoneInfo(venue_timezone))
-    except (KeyError, Exception) as exc:
-        logger = logging.getLogger(__name__)
+    except KeyError as exc:
         logger.warning(
             "Invalid venue timezone '%s', falling back to UTC: %s",
             venue_timezone, exc,

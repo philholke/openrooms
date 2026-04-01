@@ -98,10 +98,17 @@ async def deactivate_floor_plan(
 async def list_tables(
     db: AsyncSession,
     floor_plan_id: uuid.UUID,
+    venue_id: uuid.UUID,
 ) -> list[TableRead]:
+    """List tables for a floor plan, validating ownership via venue_id."""
     result = await db.execute(
         select(Table)
-        .where(Table.floor_plan_id == floor_plan_id, Table.is_active.is_(True))
+        .join(FloorPlan, Table.floor_plan_id == FloorPlan.id)
+        .where(
+            Table.floor_plan_id == floor_plan_id,
+            FloorPlan.venue_id == venue_id,
+            Table.is_active.is_(True),
+        )
         .order_by(Table.label)
     )
     return [TableRead.model_validate(t) for t in result.scalars().all()]
@@ -122,10 +129,15 @@ async def create_table(
 async def get_table(
     db: AsyncSession,
     table_id: uuid.UUID,
+    venue_id: uuid.UUID | None = None,
 ) -> Table:
-    result = await db.execute(
-        select(Table).where(Table.id == table_id, Table.is_active.is_(True))
-    )
+    """Fetch a table by ID; when venue_id is given, validate ownership via FloorPlan."""
+    stmt = select(Table).where(Table.id == table_id, Table.is_active.is_(True))
+    if venue_id is not None:
+        stmt = stmt.join(FloorPlan, Table.floor_plan_id == FloorPlan.id).where(
+            FloorPlan.venue_id == venue_id,
+        )
+    result = await db.execute(stmt)
     table = result.scalar_one_or_none()
     if table is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Table not found")

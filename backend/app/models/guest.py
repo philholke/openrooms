@@ -87,5 +87,5 @@ class GuestVisit(TimestampMixin, Base):
 
     # Relationships
     guest: Mapped["GuestProfile"] = relationship(back_populates="visits")
-    venue: Mapped["Venue"] = relationship()  # noqa: F821
-    reservation: Mapped["Reservation | None"] = relationship()  # noqa: F821
+    venue: Mapped["Venue"] = relationship(back_populates="guest_visits")  # noqa: F821
+    reservation: Mapped["Reservation | None"] = relationship(back_populates="guest_visits")  # noqa: F821

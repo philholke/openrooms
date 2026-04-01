@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = _INSECURE_DEFAULT_KEY
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
     model_config = {"env_file": ".env", "extra": "ignore"}

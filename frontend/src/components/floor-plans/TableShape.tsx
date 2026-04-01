@@ -80,7 +80,11 @@ export function TableShape({
       : `${table.min_capacity}-${table.max_capacity}`;
 
   return (
-    <g transform={`translate(${x}, ${y})`}>
+    <g
+      transform={`translate(${x}, ${y})`}
+      role="button"
+      aria-label={`Table ${table.label}, seats ${capacityLabel}`}
+    >
       {table.shape === "circle" ? (
         <ellipse
           cx={width / 2}

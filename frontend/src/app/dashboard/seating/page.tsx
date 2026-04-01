@@ -159,7 +159,6 @@ export default function SeatingPage() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [venue?.id, date, selectedPlanId],
   );
 
@@ -194,8 +193,7 @@ export default function SeatingPage() {
       controller.abort();
       clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue?.id, date, selectedPlanId]);
+  }, [venue?.id, date, selectedPlanId, fetchStatuses]);
 
   // Build status color map
   const statusColorMap: Record<string, { fill: string; stroke: string }> = {};

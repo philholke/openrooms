@@ -36,3 +36,5 @@ class Venue(TimestampMixin, Base):
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="venue")  # noqa: F821
     waitlist_entries: Mapped[list["WaitlistEntry"]] = relationship(back_populates="venue")  # noqa: F821
     surveys: Mapped[list["Survey"]] = relationship(back_populates="venue")  # noqa: F821
+    guest_visits: Mapped[list["GuestVisit"]] = relationship(back_populates="venue")  # noqa: F821
+    server_assignments: Mapped[list["ServerAssignment"]] = relationship(back_populates="venue")  # noqa: F821

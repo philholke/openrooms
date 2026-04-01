@@ -54,3 +54,4 @@ class Table(TimestampMixin, Base):
 
     # Relationships
     floor_plan: Mapped["FloorPlan"] = relationship(back_populates="tables")
+    reservations: Mapped[list["Reservation"]] = relationship(back_populates="table")  # noqa: F821

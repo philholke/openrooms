@@ -79,8 +79,7 @@ export default function ReservationsPage() {
       controller.abort();
       clearTimeout(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venue?.id, date, activeTab]);
+  }, [venue?.id, date, activeTab, fetchReservations]);
 
   if (!venue) {
     return (

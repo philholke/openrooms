@@ -113,9 +113,10 @@ class Reservation(TimestampMixin, Base):
     # Relationships
     venue: Mapped["Venue"] = relationship(back_populates="reservations")  # noqa: F821
     guest: Mapped["GuestProfile"] = relationship(back_populates="reservations")  # noqa: F821
-    table: Mapped["Table | None"] = relationship()  # noqa: F821
+    table: Mapped["Table | None"] = relationship(back_populates="reservations")  # noqa: F821
     access_rule: Mapped["AccessRule | None"] = relationship(back_populates="reservations")
     surveys: Mapped[list["Survey"]] = relationship(back_populates="reservation")  # noqa: F821
+    guest_visits: Mapped[list["GuestVisit"]] = relationship(back_populates="reservation")  # noqa: F821
 
 
 class WaitlistEntry(TimestampMixin, Base):
