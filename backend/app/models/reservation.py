@@ -105,7 +105,7 @@ class Reservation(TimestampMixin, Base):
     source: Mapped[str | None] = mapped_column(String(50), nullable=True)  # widget, phone, walk_in, admin
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     special_requests: Mapped[str | None] = mapped_column(Text, nullable=True)
-    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     cancel_token: Mapped[str | None] = mapped_column(
         String(64), nullable=True, unique=True, index=True,
     )
@@ -142,10 +142,10 @@ class WaitlistEntry(TimestampMixin, Base):
         nullable=False,
     )  # waiting, notified, seated, cancelled, no_show
     quoted_wait_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    check_in_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    seated_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    check_in_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    seated_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Relationships
     venue: Mapped["Venue"] = relationship(back_populates="waitlist_entries")  # noqa: F821
-    guest: Mapped["GuestProfile"] = relationship()  # noqa: F821
+    guest: Mapped["GuestProfile"] = relationship(back_populates="waitlist_entries")  # noqa: F821

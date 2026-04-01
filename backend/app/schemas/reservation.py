@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, time
 from typing import Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.guest import GuestInfo, GuestRead
 
@@ -43,9 +43,9 @@ class ReservationUpdate(BaseModel):
     """Staff-facing update — mutable fields after creation."""
 
     table_id: uuid.UUID | None = None
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=5000)
     party_size: int | None = None
-    special_requests: str | None = None
+    special_requests: str | None = Field(None, max_length=5000)
 
     @field_validator("party_size")
     @classmethod

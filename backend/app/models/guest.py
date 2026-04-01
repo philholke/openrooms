@@ -23,7 +23,7 @@ guest_tags = Table(
     Base.metadata,
     Column("guest_id", ForeignKey("guest_profiles.id", ondelete="CASCADE"), primary_key=True),
     Column("tag_id", ForeignKey("tags.id", ondelete="CASCADE"), primary_key=True),
-    Column("created_at", DateTime, server_default=func.now(), nullable=False),
+    Column("created_at", DateTime(timezone=True), server_default=func.now(), nullable=False),
 )
 
 
@@ -59,6 +59,7 @@ class GuestProfile(TimestampMixin, Base):
     reservations: Mapped[list["Reservation"]] = relationship(back_populates="guest")  # noqa: F821
     visits: Mapped[list["GuestVisit"]] = relationship(back_populates="guest")
     surveys: Mapped[list["Survey"]] = relationship(back_populates="guest")  # noqa: F821
+    waitlist_entries: Mapped[list["WaitlistEntry"]] = relationship(back_populates="guest")  # noqa: F821
 
 
 class GuestVisit(TimestampMixin, Base):
@@ -80,7 +81,7 @@ class GuestVisit(TimestampMixin, Base):
         ForeignKey("reservations.id", ondelete="SET NULL"),
         nullable=True,
     )
-    visited_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    visited_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     spend_amount: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 

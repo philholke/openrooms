@@ -159,7 +159,8 @@ export default function SeatingPage() {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [venue, date, selectedPlanId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [venue?.id, date, selectedPlanId],
   );
 
   useEffect(() => {
@@ -193,7 +194,8 @@ export default function SeatingPage() {
       controller.abort();
       clearTimeout(timer);
     };
-  }, [venue?.id, date, selectedPlanId, fetchStatuses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venue?.id, date, selectedPlanId]);
 
   // Build status color map
   const statusColorMap: Record<string, { fill: string; stroke: string }> = {};

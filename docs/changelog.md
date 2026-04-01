@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.8.2 — Pre-Phase 4 Quality Review (2026-04-01)
 ### 0.8.1 — Post-Phase 3 Quality Review (2026-04-01)
 ### 0.8.0 — Phase 3: Table Management Complete (2026-04-01)
 ### 0.7.9 — Pre-Phase 3 Quality Review Round 7 (2026-04-01)
@@ -22,6 +23,46 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.8.2 — Pre-Phase 4 Quality Review
+
+**Date**: 2026-04-01
+
+Quality review addressing 7 findings (1 high, 5 medium, 1 low) across backend, frontend, and infrastructure. Focuses on datetime consistency, missing indexes, schema validation, and connection pool resilience.
+
+### Backend — Database: Timezone-Aware Timestamps (HIGH)
+- **`TimestampMixin`** now declares `DateTime(timezone=True)` on `created_at`/`updated_at` — previously bare `DateTime()` produced timezone-naive columns
+- **All explicit `DateTime` columns** in `Reservation` (`cancelled_at`), `WaitlistEntry` (`check_in_time`, `seated_time`), `GuestVisit` (`visited_at`), and `guest_tags` (`created_at`) updated to `DateTime(timezone=True)` to match
+- **Migration 0008** corrected from `sa.text("now()")` to `sa.func.now()` for consistency with all other migrations
+- **Migration 0009** — `ALTER COLUMN` on all 20 datetime columns across 12 tables from `TIMESTAMP` → `TIMESTAMPTZ` (data-preserving, assumes UTC storage)
+
+### Backend — Database: Missing Indexes (MEDIUM)
+- **Migration 0010** — adds 3 indexes missed by prior FK index pass (0006):
+  - `ix_guest_tags_guest_id` on `guest_tags(guest_id)` — many-to-many join performance
+  - `ix_guest_tags_tag_id` on `guest_tags(tag_id)` — reverse tag lookups
+  - `ix_server_assignments_user_id` on `server_assignments(user_id)` — per-user assignment queries
+
+### Backend — Schema: ReservationUpdate Field Constraints (MEDIUM)
+- **`ReservationUpdate.notes`** and **`special_requests`** now capped at `max_length=5000` via `Field()` — previously unbounded `Text` fields
+
+### Backend — Database: Connection Pool Resilience (MEDIUM)
+- **`database.py`** engine now sets `pool_recycle=3600` — prevents stale connections behind PgBouncer or cloud-managed Postgres instances that drop idle connections
+
+### Backend — Models: WaitlistEntry Relationship Consistency (LOW)
+- **`WaitlistEntry.guest`** now declares `back_populates="waitlist_entries"` with matching `GuestProfile.waitlist_entries` relationship — previously unidirectional, inconsistent with all other model relationships
+
+### Frontend — Polling: Seating Page Effect Stability (MEDIUM)
+- **`fetchStatuses` useCallback** deps changed from `[venue, date, selectedPlanId]` to `[venue?.id, date, selectedPlanId]` — venue object reference changes no longer trigger unnecessary callback recreation
+- **Polling useEffect** deps changed from `[venue?.id, date, selectedPlanId, fetchStatuses]` to `[venue?.id, date, selectedPlanId]` — eliminates redundant effect re-runs matching the pattern established in reservations/waitlist pages (v0.7.9)
+
+### Infrastructure — Docker: Worker/CPU Alignment (MEDIUM)
+- **Backend Dockerfile** `--workers` reduced from 4 to 2 — aligns with `docker-compose.prod.yml` `cpus: "1"` limit, reducing context-switch thrashing
+
+### Migrations
+- `0009_datetime_timezone_alignment` — `ALTER COLUMN` on 20 datetime columns across 12 tables to `TIMESTAMPTZ`
+- `0010_missing_join_table_indexes` — 3 indexes on `guest_tags(guest_id)`, `guest_tags(tag_id)`, `server_assignments(user_id)`
 
 ---
 
