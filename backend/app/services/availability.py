@@ -42,11 +42,16 @@ async def get_available_slots(
     # Use the venue's timezone to determine "today", not the server's local tz.
     # A UTC server would otherwise be off by up to a day for western timezones,
     # causing incorrect advance booking window calculations.
+    logger = logging.getLogger(__name__)
     try:
         from zoneinfo import ZoneInfo
         today = datetime.now(ZoneInfo(venue_timezone)).date()
-    except (KeyError, Exception):
-        today = date.today()
+    except (KeyError, Exception) as exc:
+        logger.warning(
+            "Invalid venue timezone '%s' for date calculation, falling back to UTC: %s",
+            venue_timezone, exc,
+        )
+        today = datetime.now(timezone.utc).date()
 
     days_until = (target_date - today).days
 

@@ -57,15 +57,17 @@ export default function ReservationsPage() {
     const controller = new AbortController();
     let delay = 30_000;
     let timer: ReturnType<typeof setTimeout>;
+    let mounted = true;
 
     const poll = async () => {
+      if (!mounted) return;
       try {
         await fetchReservations(controller.signal);
         delay = 30_000; // reset on success
       } catch {
         delay = Math.min(delay * 1.5, 300_000); // backoff, cap 5 min
       }
-      if (!controller.signal.aborted) {
+      if (mounted && !controller.signal.aborted) {
         timer = setTimeout(poll, delay);
       }
     };
@@ -73,10 +75,12 @@ export default function ReservationsPage() {
     fetchReservations(controller.signal);
     timer = setTimeout(poll, delay);
     return () => {
+      mounted = false;
       controller.abort();
       clearTimeout(timer);
     };
-  }, [fetchReservations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venue?.id, date, activeTab]);
 
   if (!venue) {
     return (

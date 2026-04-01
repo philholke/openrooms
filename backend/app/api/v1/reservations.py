@@ -201,7 +201,9 @@ async def update_reservation_status(
     "/reservations/{reservation_id}/cancel",
     response_model=Envelope[ReservationRead],
 )
+@limiter.limit("10/minute")
 async def cancel_reservation(
+    request: Request,
     reservation_id: uuid.UUID,
     body: ReservationCancel = ReservationCancel(),
     token: str = Query(None, description="Cancel token from confirmation email"),

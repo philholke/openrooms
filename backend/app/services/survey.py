@@ -99,11 +99,15 @@ async def list_surveys(
 async def get_survey(
     db: AsyncSession,
     survey_id: uuid.UUID,
+    org_id: uuid.UUID | None = None,
 ) -> SurveyRead:
-    """Get a single survey by ID."""
-    result = await db.execute(
-        select(Survey).where(Survey.id == survey_id)
-    )
+    """Get a single survey by ID, with optional org-scope enforcement."""
+    stmt = select(Survey).where(Survey.id == survey_id)
+    if org_id is not None:
+        stmt = stmt.join(Venue, Survey.venue_id == Venue.id).where(
+            Venue.org_id == org_id
+        )
+    result = await db.execute(stmt)
     survey = result.scalar_one_or_none()
     if survey is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Survey not found")

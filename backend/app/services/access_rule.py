@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.reservation import AccessRule
@@ -25,13 +25,21 @@ async def list_access_rules(
     venue_id: uuid.UUID,
     *,
     active_only: bool = True,
-) -> list[AccessRule]:
-    stmt = select(AccessRule).where(AccessRule.venue_id == venue_id)
+    page: int = 1,
+    per_page: int = 50,
+) -> tuple[list[AccessRule], int]:
+    base = select(AccessRule).where(AccessRule.venue_id == venue_id)
     if active_only:
-        stmt = stmt.where(AccessRule.is_active.is_(True))
-    stmt = stmt.order_by(AccessRule.start_time)
+        base = base.where(AccessRule.is_active.is_(True))
+
+    count_result = await db.execute(
+        select(func.count()).select_from(base.subquery())
+    )
+    total = count_result.scalar_one()
+
+    stmt = base.order_by(AccessRule.start_time).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(stmt)
-    return list(result.scalars().all())
+    return list(result.scalars().all()), total
 
 
 async def get_access_rule(

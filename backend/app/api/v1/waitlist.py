@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,7 +8,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_org, require_role
 from app.models.organization import Organization
 from app.models.user import User
-from app.schemas.envelope import Envelope, ok
+from app.schemas.envelope import Envelope, PaginatedEnvelope, ok, paginated
 from app.schemas.waitlist import WaitlistEntryCreate, WaitlistEntryRead, WaitlistEntryUpdate, WaitlistSeatRequest
 from app.services import waitlist as waitlist_service
 from app.api.v1.venues import _get_venue_or_404
@@ -20,18 +20,22 @@ router = APIRouter(tags=["waitlist"])
 
 @router.get(
     "/venues/{venue_id}/waitlist",
-    response_model=Envelope[list[WaitlistEntryRead]],
+    response_model=PaginatedEnvelope[WaitlistEntryRead],
 )
 async def list_waitlist(
     venue_id: uuid.UUID,
     active_only: bool = True,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
     org: Organization = Depends(get_current_org),
     _user: User = Depends(require_role("staff")),
     db: AsyncSession = Depends(get_db),
 ):
     await _get_venue_or_404(db, venue_id, org.id)
-    entries = await waitlist_service.list_waitlist(db, venue_id, active_only=active_only)
-    return ok(entries)
+    items, total = await waitlist_service.list_waitlist(
+        db, venue_id, active_only=active_only, page=page, per_page=per_page,
+    )
+    return paginated(items, page=page, per_page=per_page, total=total)
 
 
 @router.post(

@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -97,17 +97,33 @@ async def list_waitlist(
     venue_id: uuid.UUID,
     *,
     active_only: bool = True,
-) -> list[WaitlistEntryRead]:
+    page: int = 1,
+    per_page: int = 50,
+) -> tuple[list[WaitlistEntryRead], int]:
     """List waitlist entries for a venue, ordered FIFO by check-in time."""
-    stmt = _base_query().where(WaitlistEntry.venue_id == venue_id)
+    base = select(WaitlistEntry).where(WaitlistEntry.venue_id == venue_id)
+    if active_only:
+        base = base.where(WaitlistEntry.status.in_(["waiting", "notified"]))
 
+    count_result = await db.execute(
+        select(func.count()).select_from(base.subquery())
+    )
+    total = count_result.scalar_one()
+
+    stmt = (
+        _base_query()
+        .where(WaitlistEntry.venue_id == venue_id)
+    )
     if active_only:
         stmt = stmt.where(WaitlistEntry.status.in_(["waiting", "notified"]))
-
-    stmt = stmt.order_by(WaitlistEntry.check_in_time.asc())
+    stmt = (
+        stmt.order_by(WaitlistEntry.check_in_time.asc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
     result = await db.execute(stmt)
     entries = result.unique().scalars().all()
-    return [_to_read(e) for e in entries]
+    return [_to_read(e) for e in entries], total
 
 
 async def update_waitlist_entry(
@@ -117,24 +133,13 @@ async def update_waitlist_entry(
     data: WaitlistEntryUpdate,
 ) -> WaitlistEntryRead:
     """Update a waitlist entry — status transitions, notes, quoted wait."""
-    # Acquire row lock to prevent concurrent status transition races
-    # (mirrors the FOR UPDATE pattern used in reservation status transitions).
-    lock_result = await db.execute(
-        select(WaitlistEntry)
-        .where(
-            WaitlistEntry.id == entry_id,
-            WaitlistEntry.venue_id == venue_id,
-        )
-        .with_for_update()
-    )
-    if lock_result.scalar_one_or_none() is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Waitlist entry not found")
-
+    # Lock + read in a single query to prevent concurrent status transition
+    # races and eliminate the gap between lock acquisition and data read.
     result = await db.execute(
         _base_query().where(
             WaitlistEntry.id == entry_id,
             WaitlistEntry.venue_id == venue_id,
-        )
+        ).with_for_update()
     )
     entry = result.unique().scalar_one_or_none()
     if entry is None:
@@ -177,23 +182,12 @@ async def seat_from_waitlist(
 
     Returns (updated_entry, reservation_dict_or_None).
     """
-    # Acquire row lock to prevent concurrent seating races.
-    lock_result = await db.execute(
-        select(WaitlistEntry)
-        .where(
-            WaitlistEntry.id == entry_id,
-            WaitlistEntry.venue_id == venue_id,
-        )
-        .with_for_update()
-    )
-    if lock_result.scalar_one_or_none() is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Waitlist entry not found")
-
+    # Lock + read in a single query to prevent concurrent seating races.
     result = await db.execute(
         _base_query().where(
             WaitlistEntry.id == entry_id,
             WaitlistEntry.venue_id == venue_id,
-        )
+        ).with_for_update()
     )
     entry = result.unique().scalar_one_or_none()
     if entry is None:

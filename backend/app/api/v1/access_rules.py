@@ -1,15 +1,17 @@
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_org, require_role
 from app.models.organization import Organization
+from app.models.reservation import AccessRule as AccessRuleModel
 from app.models.user import User
 from app.models.venue import Venue
 from app.schemas.access_rule import AccessRuleCreate, AccessRuleRead, AccessRuleUpdate
-from app.schemas.envelope import Envelope, ok
+from app.schemas.envelope import Envelope, PaginatedEnvelope, ok, paginated
 from app.services import access_rule as access_rule_service
 from app.api.v1.venues import _get_venue_or_404
 
@@ -20,17 +22,24 @@ router = APIRouter(tags=["access-rules"])
 
 @router.get(
     "/venues/{venue_id}/access-rules",
-    response_model=Envelope[list[AccessRuleRead]],
+    response_model=PaginatedEnvelope[AccessRuleRead],
 )
 async def list_access_rules(
     venue_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
     org: Organization = Depends(get_current_org),
     _user: User = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
     await _get_venue_or_404(db, venue_id, org.id)
-    rules = await access_rule_service.list_access_rules(db, venue_id)
-    return ok([AccessRuleRead.model_validate(r) for r in rules])
+    rules, total = await access_rule_service.list_access_rules(
+        db, venue_id, page=page, per_page=per_page,
+    )
+    return paginated(
+        [AccessRuleRead.model_validate(r) for r in rules],
+        page=page, per_page=per_page, total=total,
+    )
 
 
 @router.post(
@@ -62,10 +71,6 @@ async def get_access_rule(
     _user: User = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.models.reservation import AccessRule as AccessRuleModel
-    from fastapi import HTTPException
-    from sqlalchemy import select
-
     result = await db.execute(
         select(AccessRuleModel).where(AccessRuleModel.id == rule_id)
     )
@@ -88,17 +93,12 @@ async def update_access_rule(
     _user: User = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
-    # We need to find the rule and verify it belongs to a venue in this org.
-    # The service layer checks venue_id, so we need to resolve it first.
-    from app.models.reservation import AccessRule as AccessRuleModel
-    from sqlalchemy import select
-
+    # Resolve the rule's venue to verify it belongs to this org.
     result = await db.execute(
         select(AccessRuleModel).where(AccessRuleModel.id == rule_id)
     )
     existing = result.scalar_one_or_none()
     if existing is None:
-        from fastapi import HTTPException
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Access rule not found")
 
     # Verify the venue belongs to this org
@@ -120,15 +120,11 @@ async def delete_access_rule(
     _user: User = Depends(require_role("manager")),
     db: AsyncSession = Depends(get_db),
 ):
-    from app.models.reservation import AccessRule as AccessRuleModel
-    from sqlalchemy import select
-
     result = await db.execute(
         select(AccessRuleModel).where(AccessRuleModel.id == rule_id)
     )
     existing = result.scalar_one_or_none()
     if existing is None:
-        from fastapi import HTTPException
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Access rule not found")
 
     await _get_venue_or_404(db, existing.venue_id, org.id)

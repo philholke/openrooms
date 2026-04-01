@@ -76,7 +76,7 @@ class ReservationRead(BaseModel):
     party_size: int
     date: date
     time: time
-    status: str
+    status: RESERVATION_STATUSES
     source: str | None
     notes: str | None
     special_requests: str | None

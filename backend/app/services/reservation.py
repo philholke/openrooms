@@ -346,18 +346,13 @@ async def update_status(
     new_status: str,
 ) -> ReservationRead:
     """Advance the reservation status with side effects."""
-    # Lock the row to prevent concurrent status transitions
-    await db.execute(
-        select(Reservation.id)
-        .where(Reservation.id == reservation_id)
-        .with_for_update()
-    )
-
+    # Lock + read in a single query to prevent concurrent status transitions
+    # and eliminate the gap between lock acquisition and data read.
     result = await db.execute(
         _base_query().where(
             Reservation.id == reservation_id,
             Reservation.venue_id == venue_id,
-        )
+        ).with_for_update()
     )
     reservation = result.unique().scalar_one_or_none()
     if reservation is None:
@@ -399,18 +394,12 @@ async def cancel_reservation(
     reason: str | None = None,
 ) -> ReservationRead:
     """Cancel a reservation — convenience wrapper around update_status."""
-    # Lock the row to prevent concurrent cancel/status races
-    await db.execute(
-        select(Reservation.id)
-        .where(Reservation.id == reservation_id)
-        .with_for_update()
-    )
-
+    # Lock + read in a single query to prevent concurrent cancel/status races.
     result = await db.execute(
         _base_query().where(
             Reservation.id == reservation_id,
             Reservation.venue_id == venue_id,
-        )
+        ).with_for_update()
     )
     reservation = result.unique().scalar_one_or_none()
     if reservation is None:

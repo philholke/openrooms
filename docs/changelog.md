@@ -4,6 +4,7 @@
 
 ## Index
 
+### 0.7.9 — Pre-Phase 3 Quality Review Round 7 (2026-04-01)
 ### 0.7.8 — Pre-Phase 3 Quality Review Round 6 (2026-04-01)
 ### 0.7.7 — Pre-Phase 3 Quality Review Round 5 (2026-03-31)
 ### 0.7.6 — Pre-Phase 3 Quality Review Round 4 (2026-03-31)
@@ -19,6 +20,33 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 0.7.9 — Pre-Phase 3 Quality Review Round 7
+
+**Date**: 2026-04-01
+
+Seventh quality review pass addressing 12 findings (4 high, 8 medium) across backend, frontend, and database. Focuses on service-layer isolation, query efficiency, pagination completeness, and frontend polling stability. Full details in [`docs/completions/pre-phase-3-quality-review-7-completion.md`](completions/pre-phase-3-quality-review-7-completion.md).
+
+### Backend (9 fixes)
+- **Survey `get_survey()` org-scope** — service function now accepts optional `org_id` and validates via Venue join, preventing cross-tenant reads at the service layer
+- **Combined lock+read queries** — `update_status`, `cancel_reservation`, `update_waitlist_entry`, and `seat_from_waitlist` now use single `_base_query().with_for_update()` instead of separate lock + read queries
+- **Waitlist pagination** — `list_waitlist` now returns `(items, total)` with `page`/`per_page` params; API returns `PaginatedEnvelope`
+- **Access rules pagination** — `list_access_rules` now returns `(items, total)` with `page`/`per_page` params; API returns `PaginatedEnvelope`
+- **Module-level imports** — moved 10 function-scoped imports in `access_rules.py` to module level
+- **Organization model `__table_args__`** — added partial unique index definition matching migration 0005's `ix_organizations_slug_active`
+- **`ReservationRead.status` Literal type** — changed from `str` to `RESERVATION_STATUSES` for type safety
+- **Cancel endpoint rate limiting** — added `@limiter.limit("10/minute")` to public cancel endpoint
+- **Timezone logging** — added `logger.warning()` to availability engine's first timezone handler; changed fallback to UTC-aware `datetime.now(timezone.utc).date()`
+
+### Frontend (3 fixes)
+- **Polling dependency fix** — reservations and waitlist pages now use stable primitive deps (`venue?.id`, `date`, `activeTab`) instead of recreated callback refs, with `mounted` guard
+- **ErrorBoundary logging** — added `componentDidCatch` with `console.error` for production crash visibility
+- **AccessRule schema DRY** — extracted shared validation helpers (`_validate_access_rule_pairs`, `_validate_seating_areas_items`) eliminating ~80 lines of duplication
+
+### Migration
+- `0006_missing_fk_indexes` — 8 FK indexes on `venues.org_id`, `floor_plans.venue_id`, `tables.floor_plan_id`, `access_rules.venue_id`, `reservations.table_id`, `reservations.access_rule_id`, `waitlist_entries.guest_id`, `guest_visits.reservation_id`
 
 ---
 

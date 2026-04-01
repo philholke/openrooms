@@ -40,15 +40,17 @@ export default function WaitlistPage() {
     const controller = new AbortController();
     let delay = 15_000;
     let timer: ReturnType<typeof setTimeout>;
+    let mounted = true;
 
     const poll = async () => {
+      if (!mounted) return;
       try {
         await fetchEntries(controller.signal);
         delay = 15_000; // reset on success
       } catch {
         delay = Math.min(delay * 1.5, 300_000); // backoff, cap 5 min
       }
-      if (!controller.signal.aborted) {
+      if (mounted && !controller.signal.aborted) {
         timer = setTimeout(poll, delay);
       }
     };
@@ -56,10 +58,12 @@ export default function WaitlistPage() {
     fetchEntries(controller.signal);
     timer = setTimeout(poll, delay);
     return () => {
+      mounted = false;
       controller.abort();
       clearTimeout(timer);
     };
-  }, [fetchEntries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [venue?.id]);
 
   const [actionError, setActionError] = useState<string | null>(null);
 

@@ -74,14 +74,5 @@ async def get_survey(
     _user: User = Depends(require_role("staff")),
     db: AsyncSession = Depends(get_db),
 ):
-    # Verify the survey belongs to a venue in this org
-    result = await db.execute(
-        select(Survey.venue_id).where(Survey.id == survey_id)
-    )
-    row = result.one_or_none()
-    if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Survey not found")
-    await _get_venue_or_404(db, row.venue_id, org.id)
-
-    survey = await survey_service.get_survey(db, survey_id)
+    survey = await survey_service.get_survey(db, survey_id, org_id=org.id)
     return ok(survey)

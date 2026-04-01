@@ -4,6 +4,56 @@ from datetime import date, datetime, time
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+# ── Shared validation helpers ───────────────────────────────────────────
+
+def _validate_seating_areas_items(v: list[str] | None) -> list[str] | None:
+    """Validate individual seating area names (shared by Create and Update)."""
+    if v is not None:
+        for area in v:
+            if len(area) > 100:
+                raise ValueError("Each seating area name must be at most 100 characters")
+    return v
+
+
+def _validate_access_rule_pairs(
+    *,
+    start_time: time | None,
+    end_time: time | None,
+    min_party_size: int | None,
+    max_party_size: int | None,
+    days_of_week: list[int] | None,
+    slot_interval_minutes: int | None,
+    start_date: date | None,
+    end_date: date | None,
+    require_deposit: bool | None,
+    deposit_amount_cents: int | None,
+) -> None:
+    """Cross-field validation shared between Create and Update schemas.
+    For Update, fields may be None (not provided) — only validate when both
+    fields in a pair are present."""
+    if start_time is not None and end_time is not None:
+        if start_time >= end_time:
+            raise ValueError("start_time must be before end_time")
+    if min_party_size is not None and max_party_size is not None:
+        if min_party_size > max_party_size:
+            raise ValueError("min_party_size must be <= max_party_size")
+    if days_of_week is not None:
+        if not days_of_week:
+            raise ValueError("days_of_week must not be empty")
+        if not all(0 <= d <= 6 for d in days_of_week):
+            raise ValueError("days_of_week values must be 0-6 (Mon-Sun)")
+    if slot_interval_minutes is not None:
+        if slot_interval_minutes not in {15, 30, 45, 60}:
+            raise ValueError("slot_interval_minutes must be 15, 30, 45, or 60")
+    if start_date is not None and end_date is not None:
+        if start_date > end_date:
+            raise ValueError("start_date must be <= end_date")
+    if require_deposit and not deposit_amount_cents:
+        raise ValueError("deposit_amount_cents is required when require_deposit is true")
+
+
+# ── Schemas ─────────────────────────────────────────────────────────────
+
 class AccessRuleCreate(BaseModel):
     name: str = Field(..., max_length=255)
     days_of_week: list[int]
@@ -25,29 +75,23 @@ class AccessRuleCreate(BaseModel):
 
     @field_validator("seating_areas")
     @classmethod
-    def _validate_seating_areas(cls, v: list[str] | None) -> list[str] | None:
-        if v is not None:
-            for area in v:
-                if len(area) > 100:
-                    raise ValueError("Each seating area name must be at most 100 characters")
-        return v
+    def _check_seating_areas(cls, v: list[str] | None) -> list[str] | None:
+        return _validate_seating_areas_items(v)
 
     @model_validator(mode="after")
     def _validate(self):
-        if self.start_time >= self.end_time:
-            raise ValueError("start_time must be before end_time")
-        if self.min_party_size > self.max_party_size:
-            raise ValueError("min_party_size must be <= max_party_size")
-        if not all(0 <= d <= 6 for d in self.days_of_week):
-            raise ValueError("days_of_week values must be 0-6 (Mon-Sun)")
-        if not self.days_of_week:
-            raise ValueError("days_of_week must not be empty")
-        if self.slot_interval_minutes not in {15, 30, 45, 60}:
-            raise ValueError("slot_interval_minutes must be 15, 30, 45, or 60")
-        if self.start_date and self.end_date and self.start_date > self.end_date:
-            raise ValueError("start_date must be <= end_date")
-        if self.require_deposit and not self.deposit_amount_cents:
-            raise ValueError("deposit_amount_cents is required when require_deposit is true")
+        _validate_access_rule_pairs(
+            start_time=self.start_time,
+            end_time=self.end_time,
+            min_party_size=self.min_party_size,
+            max_party_size=self.max_party_size,
+            days_of_week=self.days_of_week,
+            slot_interval_minutes=self.slot_interval_minutes,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            require_deposit=self.require_deposit,
+            deposit_amount_cents=self.deposit_amount_cents,
+        )
         return self
 
 
@@ -72,36 +116,25 @@ class AccessRuleUpdate(BaseModel):
 
     @field_validator("seating_areas")
     @classmethod
-    def _validate_seating_areas(cls, v: list[str] | None) -> list[str] | None:
-        if v is not None:
-            for area in v:
-                if len(area) > 100:
-                    raise ValueError("Each seating area name must be at most 100 characters")
-        return v
+    def _check_seating_areas(cls, v: list[str] | None) -> list[str] | None:
+        return _validate_seating_areas_items(v)
 
     @model_validator(mode="after")
     def _validate(self):
         # When both fields in a pair are provided, validate them against each other.
         # Single-field updates are validated in the service layer against DB values.
-        if self.start_time is not None and self.end_time is not None:
-            if self.start_time >= self.end_time:
-                raise ValueError("start_time must be before end_time")
-        if self.min_party_size is not None and self.max_party_size is not None:
-            if self.min_party_size > self.max_party_size:
-                raise ValueError("min_party_size must be <= max_party_size")
-        if self.days_of_week is not None:
-            if not self.days_of_week:
-                raise ValueError("days_of_week must not be empty")
-            if not all(0 <= d <= 6 for d in self.days_of_week):
-                raise ValueError("days_of_week values must be 0-6 (Mon-Sun)")
-        if self.slot_interval_minutes is not None:
-            if self.slot_interval_minutes not in {15, 30, 45, 60}:
-                raise ValueError("slot_interval_minutes must be 15, 30, 45, or 60")
-        if self.start_date is not None and self.end_date is not None:
-            if self.start_date > self.end_date:
-                raise ValueError("start_date must be <= end_date")
-        if self.require_deposit and not self.deposit_amount_cents:
-            raise ValueError("deposit_amount_cents is required when require_deposit is true")
+        _validate_access_rule_pairs(
+            start_time=self.start_time,
+            end_time=self.end_time,
+            min_party_size=self.min_party_size,
+            max_party_size=self.max_party_size,
+            days_of_week=self.days_of_week,
+            slot_interval_minutes=self.slot_interval_minutes,
+            start_date=self.start_date,
+            end_date=self.end_date,
+            require_deposit=self.require_deposit,
+            deposit_amount_cents=self.deposit_amount_cents,
+        )
         return self
 
 
