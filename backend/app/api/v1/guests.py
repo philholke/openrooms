@@ -1,6 +1,9 @@
+import csv
+import io
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -30,10 +33,40 @@ async def list_guests(
     venue_id: uuid.UUID | None = Query(None, description="Filter by venue (via visits)"),
     page: int = Query(1, ge=1),
     per_page: int = Query(25, ge=1, le=100),
+    format: str = Query("json", description="Response format: json or csv"),
     org: Organization = Depends(get_current_org),
     _user: User = Depends(require_role("staff")),
     db: AsyncSession = Depends(get_db),
 ):
+    if format == "csv":
+        # CSV export — up to 10,000 rows
+        items, total = await guest_service.list_guests(
+            db, org.id, search=search, tag_id=tag_id, venue_id=venue_id,
+            page=1, per_page=10_000,
+        )
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["Name", "Email", "Phone", "Visits", "Tags"])
+        for g in items:
+            name = f"{g.first_name or ''} {g.last_name or ''}".strip()
+            tags = ", ".join(g.tags) if g.tags else ""
+            # CSV injection protection
+            for val in [name, g.email, g.phone, tags]:
+                pass  # handled in row below
+            row = []
+            for val in [name, g.email or "", g.phone or "", g.visit_count, tags]:
+                s = str(val)
+                if s and s[0] in ("=", "+", "-", "@", "\t"):
+                    s = f"'{s}"
+                row.append(s)
+            writer.writerow(row)
+        output.seek(0)
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="guests.csv"'},
+        )
+
     items, total = await guest_service.list_guests(
         db,
         org.id,

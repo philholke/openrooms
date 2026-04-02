@@ -24,6 +24,22 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # Redis / task queue
+    REDIS_URL: str = "redis://redis:6379/0"
+
+    # Application base URL (used for links in emails)
+    APP_BASE_URL: str = "http://localhost:3000"
+
+    # Email / SMTP
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@openrooms.dev"
+    SMTP_FROM_NAME: str = "OpenRooms"
+    SMTP_USE_TLS: bool = True
+    EMAIL_ENABLED: bool = False
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

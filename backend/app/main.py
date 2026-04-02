@@ -42,7 +42,15 @@ async def http_exception_handler(_request: Request, exc: HTTPException):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up %s (%s)", settings.PROJECT_NAME, settings.ENVIRONMENT)
+    # Connect Redis pool for background task enqueuing
+    from app.core.redis import close_redis_pool, get_redis_pool
+
+    try:
+        await get_redis_pool()
+    except Exception:
+        logger.warning("Redis not available — background tasks will be skipped", exc_info=True)
     yield
+    await close_redis_pool()
     logger.info("Shutting down %s", settings.PROJECT_NAME)
 
 

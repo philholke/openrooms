@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{{ subject }}{% endblock %}</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; background-color: #f4f4f5; padding: 32px 0; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; }
+    .header { background-color: #18181b; padding: 24px 32px; }
+    .header h1 { color: #ffffff; font-size: 20px; margin: 0; font-weight: 600; }
+    .header .venue-name { color: #a1a1aa; font-size: 14px; margin-top: 4px; }
+    .body { padding: 32px; color: #27272a; font-size: 15px; line-height: 1.6; }
+    .body h2 { font-size: 18px; color: #18181b; margin: 0 0 16px 0; }
+    .body p { margin: 0 0 16px 0; }
+    .detail-box { background-color: #f4f4f5; border-radius: 6px; padding: 20px; margin: 24px 0; }
+    .detail-row { display: flex; padding: 6px 0; }
+    .detail-label { color: #71717a; font-size: 13px; min-width: 120px; }
+    .detail-value { color: #18181b; font-size: 14px; font-weight: 500; }
+    .btn { display: inline-block; background-color: #18181b; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: 500; margin: 8px 0; }
+    .btn-outline { display: inline-block; background-color: transparent; color: #18181b; text-decoration: none; padding: 10px 24px; border: 1px solid #d4d4d8; border-radius: 6px; font-size: 13px; margin: 8px 0; }
+    .footer { padding: 24px 32px; text-align: center; color: #a1a1aa; font-size: 12px; border-top: 1px solid #e4e4e7; }
+    .footer a { color: #71717a; text-decoration: underline; }
+    @media (max-width: 640px) {
+      .body { padding: 24px 20px; }
+      .header { padding: 20px; }
+      .detail-box { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <h1>{{ org_name | default("OpenRooms", true) }}</h1>
+        {% if venue_name %}
+        <div class="venue-name">{{ venue_name }}</div>
+        {% endif %}
+      </div>
+      <div class="body">
+        {% block content %}{% endblock %}
+      </div>
+      <div class="footer">
+        {% block footer %}
+        <p>{{ venue_name | default("", true) }}{% if venue_address %} &middot; {{ venue_address }}{% endif %}</p>
+        <p>Powered by <a href="{{ app_base_url }}">OpenRooms</a></p>
+        {% endblock %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>

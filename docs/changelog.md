@@ -4,6 +4,7 @@
 
 ## Index
 
+### 1.0.0 — Phase 5: Notifications & Analytics (2026-04-01)
 ### 0.9.2 — Post-Phase 4 Quality Review Round 2 (2026-04-01)
 ### 0.9.1 — Post-Phase 4 Quality Review (2026-04-01)
 ### 0.9.0 — Phase 4: CRM & Guest Profiles + Post-Visit Surveys (2026-04-01)
@@ -27,6 +28,72 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 1.0.0 — Phase 5: Notifications & Analytics
+
+**Date**: 2026-04-01
+
+Complete Phase 5 implementing background task infrastructure, transactional email notifications, operational analytics, and notification preferences across 7 sub-phases (5A–5G). Full details in `docs/completions/phase-5a-background-tasks-completion.md` through `phase-5g-quality-review-completion.md`.
+
+### Infrastructure (Phase 5A)
+- **arq + Redis** background task queue — async-native worker process for email delivery and scheduled jobs
+- **Docker Compose** updated with `redis` and `worker` services
+- **Fire-and-forget enqueue** — Redis failures never block API responses
+- **Graceful degradation** — app starts without Redis, background tasks silently skipped
+
+### Email Service (Phase 5B)
+- **`EmailService`** with Jinja2 template rendering and async SMTP delivery via `aiosmtplib`
+- **Dev mode** (`EMAIL_ENABLED=False`) — emails fully rendered but logged to stdout instead of sent
+- **5 email templates**: reservation confirmed, reservation reminder, survey invite, cancellation acknowledgement, welcome
+- **Multipart emails** — HTML + auto-generated plain-text fallback
+- **Header injection protection** — CR/LF stripped from Subject and To headers
+
+### Transactional Notifications (Phase 5C)
+- **Reservation confirmed** — email sent on creation (status=confirmed)
+- **Welcome email** — sent to first-time guests (0 prior visits)
+- **Survey invite** — sent on reservation completion with survey link
+- **Cancellation acknowledgement** — sent on cancel (staff or self-service)
+- **Daily reminder cron** — runs at 10:00 UTC, sends reminders for tomorrow's reservations per venue timezone
+- **Self-service cancellation** — public page at `/cancel/[token]` + backend API (`GET`/`POST /api/v1/public/reservations/{cancel_token}`)
+- **Notification service** (`services/notifications.py`) — builds email contexts from domain objects, all fire-and-forget
+
+### Analytics Backend (Phase 5D)
+- **Reservation analytics** — summary stats, time-series trends, status/source/day-of-week/peak-hour breakdowns
+- **Guest analytics** — total/new/returning guests, return rate, growth chart, top guests, tag distribution
+- **Operations analytics** — turn time, walk-in ratio, waitlist conversion/abandonment, section utilization
+- **CSV export** — `?format=csv` on all analytics endpoints + guest list export (up to 10K rows)
+- **CSV injection protection** — cells starting with `=`, `+`, `-`, `@`, `\t` prefixed with `'`
+
+### Analytics Frontend (Phase 5E)
+- **Analytics dashboard** at `/dashboard/analytics` with Reservations/Guests/Operations tabs
+- **Custom SVG charts**: `LineChart`, `BarChart`, `DonutChart`, `SummaryCard` — no external chart libraries
+- **`DateRangePicker`** with 7d/30d/90d/YTD presets + custom date inputs
+- **CSV download button** — fetches with auth token and triggers browser download
+
+### Notification Preferences (Phase 5F)
+- **`NotificationPreference` model** — per-venue on/off toggles for each notification type
+- **Lazy defaults** — all notifications enabled until explicitly disabled (no seeding needed)
+- **Settings page** at `/dashboard/settings` with grouped toggle switches
+- **Preference check** wired into all notification functions — respects venue-level opt-out
+
+### Quality Review (Phase 5G)
+- **Fixed**: Missing venue org-scoping on analytics endpoints (HIGH) — added `_verify_venue_org()` check
+- **Fixed**: Email header CRLF injection (HIGH) — added `_sanitize_header()` to SMTP send
+- **Fixed**: Incomplete CSV injection protection (MEDIUM) — added tab character to check
+- **Fixed**: Verbose error logging on public endpoints (MEDIUM) — reduced to `logger.warning()`
+- **Fixed**: Redis URL logged with potential credentials (LOW) — now logs only host:port
+
+### Database — Migrations 0016–0017
+- `0016_create_notification_preferences` — notification preferences table with venue+type unique constraint
+- `0017_add_analytics_indexes` — 5 composite indexes for analytics query performance
+
+### New Dependencies
+- `arq` >=0.26 — async task queue
+- `redis[hiredis]` >=5.0 — Redis client with C parser
+- `aiosmtplib` >=3.0 — async SMTP
+- `jinja2` >=3.1 — email template engine
 
 ---
 

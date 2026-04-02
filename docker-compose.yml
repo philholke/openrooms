@@ -15,6 +15,18 @@ services:
       timeout: 3s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   backend:
     build: ./backend
     ports:
@@ -25,14 +37,35 @@ services:
       SECRET_KEY: dev-secret-key-change-in-production
       ENVIRONMENT: development
       CORS_ORIGINS: '["http://localhost:3000"]'
+      REDIS_URL: redis://redis:6379/0
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health/ready\")'"]
       interval: 10s
       timeout: 5s
       retries: 3
+    volumes:
+      - ./backend/app:/app/app
+
+  worker:
+    build: ./backend
+    command: arq app.core.worker.WorkerSettings
+    entrypoint: []
+    environment:
+      DATABASE_URL: postgresql+asyncpg://openrooms:openrooms@db:5432/openrooms
+      DATABASE_URL_SYNC: postgresql+psycopg2://openrooms:openrooms@db:5432/openrooms
+      SECRET_KEY: dev-secret-key-change-in-production
+      ENVIRONMENT: development
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./backend/app:/app/app
 
@@ -50,3 +83,4 @@ services:
 
 volumes:
   pgdata:
+  redisdata:

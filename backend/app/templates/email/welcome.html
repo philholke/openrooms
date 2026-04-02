@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Welcome to {{ venue_name | default("Our Restaurant", true) }}</h2>
+
+<p>Hi {{ guest_first_name | default("there", true) }},</p>
+
+<p>Thank you for your first reservation with us! We're delighted to have you as a guest and look forward to making your visit memorable.</p>
+
+<div class="detail-box">
+  <div class="detail-row">
+    <span class="detail-label">Date</span>
+    <span class="detail-value">{{ reservation_date }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Time</span>
+    <span class="detail-value">{{ reservation_time }}</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Party size</span>
+    <span class="detail-value">{{ party_size }} {{ "guest" if party_size == 1 else "guests" }}</span>
+  </div>
+</div>
+
+{% if booking_url %}
+<p style="font-size: 13px; color: #71717a;">You can always make future reservations at:</p>
+<p><a href="{{ booking_url }}" class="btn-outline">Book a Table</a></p>
+{% endif %}
+{% endblock %}

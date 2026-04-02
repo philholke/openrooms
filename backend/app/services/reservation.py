@@ -26,6 +26,7 @@ from app.schemas.reservation import (
 from app.services.availability import get_available_slots
 from app.services.guest import get_or_create_guest
 from app.services import auto_tag as auto_tag_service
+from app.services import notifications as notification_service
 from app.services import survey as survey_service
 
 # ─── Status Machine ──────────────────────────────────────────────────────
@@ -175,6 +176,15 @@ async def create_reservation(
         _base_query().where(Reservation.id == reservation.id)
     )
     reservation = result.unique().scalar_one()
+
+    # ── Email notifications (fire-and-forget) ──
+    if initial_status == "confirmed":
+        try:
+            await notification_service.send_reservation_confirmed(db, reservation)
+            await notification_service.send_welcome(db, reservation)
+        except Exception:
+            logger.warning("Failed to enqueue creation emails", exc_info=True)
+
     return _to_read(reservation)
 
 
@@ -379,8 +389,9 @@ async def update_status(
 
         # Non-critical side effects: failures here must not roll back the
         # reservation status change or the guest visit record.
+        dispatch = None
         try:
-            await survey_service.generate_survey_dispatch(
+            dispatch = await survey_service.generate_survey_dispatch(
                 db,
                 venue_id=reservation.venue_id,
                 reservation_id=reservation.id,
@@ -391,6 +402,17 @@ async def update_status(
                 "Failed to generate survey dispatch for reservation %s",
                 reservation.id,
             )
+
+        if dispatch:
+            try:
+                await notification_service.send_survey_invite(
+                    db, dispatch, reservation,
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to enqueue survey invite for reservation %s",
+                    reservation.id,
+                )
 
         try:
             from app.models.venue import Venue
@@ -417,6 +439,13 @@ async def update_status(
         _base_query().where(Reservation.id == reservation.id)
     )
     reservation = result.unique().scalar_one()
+
+    if new_status == "cancelled":
+        try:
+            await notification_service.send_reservation_cancelled(db, reservation)
+        except Exception:
+            logger.warning("Failed to enqueue cancellation email", exc_info=True)
+
     return _to_read(reservation)
 
 
@@ -452,4 +481,10 @@ async def cancel_reservation(
         _base_query().where(Reservation.id == reservation.id)
     )
     reservation = result.unique().scalar_one()
+
+    try:
+        await notification_service.send_reservation_cancelled(db, reservation)
+    except Exception:
+        logger.warning("Failed to enqueue cancellation email", exc_info=True)
+
     return _to_read(reservation)

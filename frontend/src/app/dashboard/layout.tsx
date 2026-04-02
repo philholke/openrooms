@@ -17,7 +17,9 @@ const NAV_ITEMS = [
   { href: "/dashboard/seating", label: "Seating" },
   { href: "/dashboard/pacing", label: "Pacing" },
   { href: "/dashboard/surveys", label: "Surveys" },
+  { href: "/dashboard/analytics", label: "Analytics" },
   { href: "/dashboard/reports/pre-shift", label: "Pre-Shift" },
+  { href: "/dashboard/settings", label: "Settings" },
 ];
 
 function VenueSelector() {

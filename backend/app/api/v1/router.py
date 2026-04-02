@@ -15,6 +15,9 @@ from app.api.v1.tags import router as tags_router
 from app.api.v1.server_assignments import router as server_assignments_router
 from app.api.v1.pacing import router as pacing_router
 from app.api.v1.reports import router as reports_router
+from app.api.v1.public_reservations import router as public_reservations_router
+from app.api.v1.analytics import router as analytics_router
+from app.api.v1.notification_preferences import router as notification_preferences_router
 
 router = APIRouter()
 
@@ -33,3 +36,6 @@ router.include_router(tags_router)
 router.include_router(server_assignments_router)
 router.include_router(pacing_router)
 router.include_router(reports_router)
+router.include_router(public_reservations_router)
+router.include_router(analytics_router)
+router.include_router(notification_preferences_router)

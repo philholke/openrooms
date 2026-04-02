@@ -388,3 +388,130 @@ export interface PreShiftReport {
   sections: SectionSummary[];
   entries: PreShiftReportEntry[];
 }
+
+// ─── Analytics ──────────────────────────────────────────────────────────
+
+export interface ReservationSummary {
+  total_reservations: number;
+  total_covers: number;
+  avg_party_size: number;
+  cancellation_rate: number;
+  no_show_rate: number;
+  completion_rate: number;
+  avg_lead_time_days: number;
+}
+
+export interface PeriodReservations {
+  period: string;
+  reservations: number;
+  covers: number;
+  cancellations: number;
+  no_shows: number;
+  completions: number;
+}
+
+export interface StatusBreakdown {
+  completed: number;
+  cancelled: number;
+  no_show: number;
+  confirmed: number;
+  pending: number;
+  seated: number;
+  arrived: number;
+}
+
+export interface SourceBreakdown {
+  source: string;
+  count: number;
+}
+
+export interface DayOfWeekStats {
+  day: number;
+  label: string;
+  reservations: number;
+  covers: number;
+}
+
+export interface HourStats {
+  hour: number;
+  reservations: number;
+  covers: number;
+}
+
+export interface ReservationAnalytics {
+  summary: ReservationSummary;
+  by_period: PeriodReservations[];
+  by_status: StatusBreakdown;
+  by_source: SourceBreakdown[];
+  by_day_of_week: DayOfWeekStats[];
+  peak_hours: HourStats[];
+}
+
+export interface GuestSummary {
+  total_guests: number;
+  new_guests_in_period: number;
+  returning_guests_in_period: number;
+  return_rate: number;
+  avg_visits_per_guest: number;
+}
+
+export interface GuestGrowth {
+  period: string;
+  new_guests: number;
+  cumulative: number;
+}
+
+export interface TopGuest {
+  id: string;
+  name: string;
+  visits: number;
+  last_visit: string | null;
+}
+
+export interface TagDistribution {
+  tag_id: string;
+  tag_name: string;
+  count: number;
+  color: string | null;
+}
+
+export interface GuestAnalytics {
+  summary: GuestSummary;
+  growth: GuestGrowth[];
+  top_guests: TopGuest[];
+  tag_distribution: TagDistribution[];
+}
+
+export interface OperationsSummary {
+  avg_turn_time_minutes: number | null;
+  table_utilization_rate: number | null;
+  walk_in_ratio: number;
+  waitlist_conversion_rate: number;
+  waitlist_abandonment_rate: number;
+}
+
+export interface SectionUtilization {
+  section: string;
+  covers: number;
+  reservation_count: number;
+}
+
+export interface TurnTimeByPartySize {
+  party_size: number;
+  avg_turn_time_minutes: number;
+}
+
+export interface WaitlistAnalyticsStats {
+  total_entries: number;
+  seated: number;
+  cancelled: number;
+  no_show: number;
+  avg_wait_minutes: number | null;
+}
+
+export interface OperationsAnalytics {
+  summary: OperationsSummary;
+  utilization_by_section: SectionUtilization[];
+  turn_time_by_party_size: TurnTimeByPartySize[];
+  waitlist_stats: WaitlistAnalyticsStats;
+}

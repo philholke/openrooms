@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>How Was Your Visit?</h2>
+
+<p>Hi {{ guest_first_name | default("there", true) }},</p>
+
+<p>Thank you for dining with us{% if reservation_date %} on {{ reservation_date }}{% endif %}. We'd love to hear about your experience — it only takes a minute.</p>
+
+<p style="text-align: center; margin: 32px 0;">
+  <a href="{{ survey_url }}" class="btn">Share Your Feedback</a>
+</p>
+
+<p style="font-size: 13px; color: #71717a;">Your feedback helps us improve and ensures every visit is better than the last.</p>
+{% endblock %}
