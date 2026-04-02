@@ -24,6 +24,7 @@ from app.schemas.analytics import (
     OperationsAnalytics,
     ReservationAnalytics,
 )
+from app.schemas.envelope import Envelope, ok
 from app.services.analytics import (
     get_guest_analytics,
     get_operations_analytics,
@@ -100,7 +101,7 @@ def _csv_response(rows: list[dict], filename: str) -> StreamingResponse:
 
 @router.get(
     "/venues/{venue_id}/analytics/reservations",
-    response_model=ReservationAnalytics,
+    response_model=Envelope[ReservationAnalytics],
 )
 async def reservation_analytics(
     venue_id: uuid.UUID,
@@ -122,13 +123,13 @@ async def reservation_analytics(
         rows = [p.model_dump() for p in data.by_period]
         return _csv_response(rows, f"reservations-{date_from}-to-{date_to}.csv")
 
-    return data
+    return ok(data)
 
 
 # ─── Guest Analytics ────────────────────────────────────────────────────
 
 
-@router.get("/analytics/guests", response_model=GuestAnalytics)
+@router.get("/analytics/guests", response_model=Envelope[GuestAnalytics])
 async def guest_analytics(
     date_from: date = Query(...),
     date_to: date = Query(...),
@@ -147,7 +148,7 @@ async def guest_analytics(
         rows = [g.model_dump() for g in data.growth]
         return _csv_response(rows, f"guests-{date_from}-to-{date_to}.csv")
 
-    return data
+    return ok(data)
 
 
 # ─── Operations Analytics ───────────────────────────────────────────────
@@ -155,7 +156,7 @@ async def guest_analytics(
 
 @router.get(
     "/venues/{venue_id}/analytics/operations",
-    response_model=OperationsAnalytics,
+    response_model=Envelope[OperationsAnalytics],
 )
 async def operations_analytics(
     venue_id: uuid.UUID,
@@ -175,4 +176,4 @@ async def operations_analytics(
         rows = [s.model_dump() for s in data.utilization_by_section]
         return _csv_response(rows, f"operations-{date_from}-to-{date_to}.csv")
 
-    return data
+    return ok(data)

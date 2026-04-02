@@ -9,6 +9,7 @@ from app.core.dependencies import get_current_org, require_role
 from app.models.organization import Organization
 from app.models.user import User
 from app.models.venue import Venue
+from app.schemas.envelope import Envelope, ok
 from app.schemas.notification_preference import (
     NotificationPreferenceRead,
     NotificationPreferenceUpdate,
@@ -33,7 +34,7 @@ async def _verify_venue_org(db: AsyncSession, venue_id: uuid.UUID, org_id: uuid.
 
 @router.get(
     "/venues/{venue_id}/notification-preferences",
-    response_model=list[NotificationPreferenceRead],
+    response_model=Envelope[list[NotificationPreferenceRead]],
 )
 async def list_notification_preferences(
     venue_id: uuid.UUID,
@@ -42,12 +43,12 @@ async def list_notification_preferences(
     db: AsyncSession = Depends(get_db),
 ):
     await _verify_venue_org(db, venue_id, org.id)
-    return await get_preferences(db, venue_id)
+    return ok(await get_preferences(db, venue_id))
 
 
 @router.patch(
     "/venues/{venue_id}/notification-preferences",
-    response_model=list[NotificationPreferenceRead],
+    response_model=Envelope[list[NotificationPreferenceRead]],
 )
 async def update_notification_preferences(
     venue_id: uuid.UUID,
@@ -57,4 +58,4 @@ async def update_notification_preferences(
     db: AsyncSession = Depends(get_db),
 ):
     await _verify_venue_org(db, venue_id, org.id)
-    return await update_preferences(db, venue_id, body)
+    return ok(await update_preferences(db, venue_id, body))

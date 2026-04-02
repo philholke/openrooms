@@ -4,6 +4,7 @@
 
 ## Index
 
+### 1.4.0 — Post-Phase 5 Quality Review Round 4 (2026-04-02)
 ### 1.3.0 — Post-Phase 5 Quality Review Round 3 (2026-04-02)
 ### 1.2.0 — Post-Phase 5 Quality Review Round 2 (2026-04-02)
 ### 1.1.0 — Post-Phase 5 Quality Review (2026-04-02)
@@ -31,6 +32,23 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 1.4.0 — Post-Phase 5 Quality Review Round 4
+
+**Date**: 2026-04-02
+
+Quality review addressing 2 findings (1 high, 1 medium) across analytics endpoints, notification preference endpoints, and Docker infrastructure. Focuses on API response contract consistency and operational resilience.
+
+### Fixed: Analytics and notification preference endpoints missing Envelope wrapping (HIGH)
+- **`api/v1/analytics.py`** — all three analytics endpoints (`GET reservations`, `GET guests`, `GET operations`) returned bare response objects instead of wrapping with `ok()` from `schemas/envelope.py`. Every other endpoint in the codebase returns `{"data": ..., "meta": null, "errors": null}` but these five endpoints returned raw objects. The frontend `api.get<T>()` client returns `Envelope<T>` and all call sites access `res.data` to unwrap — so `res.data` resolved to `undefined`, rendering the entire analytics dashboard non-functional across all three tabs
+- **`api/v1/notification_preferences.py`** — same pattern: both GET and PATCH endpoints returned raw `list[NotificationPreferenceRead]` without envelope wrapping, making the settings page non-functional
+- Added `from app.schemas.envelope import Envelope, ok` and wrapped all five returns with `ok(data)`, updated all `response_model` declarations to `Envelope[...]`
+
+### Fixed: Backend service missing restart policy (MEDIUM)
+- **`docker-compose.yml`** — the `backend` service had no `restart:` directive while the `worker` service already had `restart: unless-stopped`. If the backend container crashed (OOM, unhandled exception), it stayed down permanently until manual intervention
+- Added `restart: unless-stopped` to the backend service, consistent with the worker service
 
 ---
 
