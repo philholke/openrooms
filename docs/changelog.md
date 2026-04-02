@@ -4,6 +4,7 @@
 
 ## Index
 
+### 1.5.0 — Post-Phase 5 Quality Review Round 5 (2026-04-02)
 ### 1.4.0 — Post-Phase 5 Quality Review Round 4 (2026-04-02)
 ### 1.3.0 — Post-Phase 5 Quality Review Round 3 (2026-04-02)
 ### 1.2.0 — Post-Phase 5 Quality Review Round 2 (2026-04-02)
@@ -32,6 +33,26 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 1.5.0 — Post-Phase 5 Quality Review Round 5
+
+**Date**: 2026-04-02
+
+Quality review addressing 3 findings (1 high, 2 medium) across worker task registration, Docker infrastructure, and analytics query scoping. Focuses on background job correctness, operational resilience, and defense-in-depth org isolation.
+
+### Fixed: Daily reservation reminders never execute (HIGH)
+- **`core/worker.py`** — `daily_reservation_reminders` was imported and referenced in the `cron_jobs` schedule (fires daily at 10:00 UTC) but was missing from the arq `functions` list. arq requires all task functions — including those used in cron jobs — to be registered in `functions`. The worker silently failed with a "function not found" error every day, meaning no guest ever received a reservation reminder email
+- Added `daily_reservation_reminders` to the `functions` list alongside `send_email_task` and `evaluate_auto_tags_task`
+
+### Fixed: Frontend service missing restart policy (MEDIUM)
+- **`docker-compose.yml`** — the `frontend` service had a healthcheck but no `restart:` directive, while `backend` and `worker` both had `restart: unless-stopped`. If the Next.js container crashed (OOM, unhandled exception), it stayed down permanently until manual intervention
+- Added `restart: unless-stopped` to the frontend service, consistent with backend and worker
+
+### Fixed: Tag distribution query missing defense-in-depth org filter (MEDIUM)
+- **`services/analytics.py`** — the tag distribution sub-query in guest analytics filtered guests by `GuestProfile.org_id == org_id` but did not also filter `Tag.org_id == org_id`. While not directly exploitable (tags are assigned through org-scoped endpoints), this was inconsistent with the defense-in-depth pattern applied to all other cross-entity queries (e.g., guest detail sub-queries fixed in 0.9.2)
+- Added `Tag.org_id == org_id` to the WHERE clause alongside the existing guest org filter
 
 ---
 

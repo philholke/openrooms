@@ -350,7 +350,7 @@ async def get_guest_analytics(
         )
         .join(guest_tags, Tag.id == guest_tags.c.tag_id)
         .join(GuestProfile, guest_tags.c.guest_id == GuestProfile.id)
-        .where(GuestProfile.org_id == org_id)
+        .where(GuestProfile.org_id == org_id, Tag.org_id == org_id)
         .group_by(Tag.id, Tag.name, Tag.color)
         .order_by(func.count(guest_tags.c.guest_id).desc())
         .limit(15)

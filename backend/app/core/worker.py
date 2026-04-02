@@ -47,6 +47,7 @@ class WorkerSettings:
     functions = [
         send_email_task,
         evaluate_auto_tags_task,
+        daily_reservation_reminders,
     ]
 
     on_startup = startup
