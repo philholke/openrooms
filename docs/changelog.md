@@ -4,6 +4,9 @@
 
 ## Index
 
+### 1.3.0 — Post-Phase 5 Quality Review Round 3 (2026-04-02)
+### 1.2.0 — Post-Phase 5 Quality Review Round 2 (2026-04-02)
+### 1.1.0 — Post-Phase 5 Quality Review (2026-04-02)
 ### 1.0.0 — Phase 5: Notifications & Analytics (2026-04-01)
 ### 0.9.2 — Post-Phase 4 Quality Review Round 2 (2026-04-01)
 ### 0.9.1 — Post-Phase 4 Quality Review (2026-04-01)
@@ -28,6 +31,74 @@
 ### 0.3.0 — Phase 2B: Access Rules & Availability Engine (2026-03-31)
 ### 0.2.0 — Phase 2A: Backend Foundation (2026-03-31)
 ### 0.1.0 — Project Scaffold (2026-03-30)
+
+---
+
+## 1.3.0 — Post-Phase 5 Quality Review Round 3
+
+**Date**: 2026-04-02
+
+Quality review addressing 3 findings (1 high, 2 medium) across the guest CSV export, worker infrastructure, and notification preference validation. Focuses on runtime correctness, operational resilience, and input validation.
+
+### Fixed: Guest CSV export crashes with AttributeError (HIGH)
+- **`api/v1/guests.py`** — CSV export referenced `g.tags` and `g.visit_count` which do not exist on the `GuestListRead` schema (correct attributes are `tag_names` and `total_visits`). Any call to `GET /guests?format=csv` returned a 500 error, making the entire guest export feature non-functional
+- Changed `g.tags` → `g.tag_names` and `g.visit_count` → `g.total_visits`
+
+### Fixed: Worker service missing restart policy (MEDIUM)
+- **`docker-compose.yml`** — the `worker` service had no `restart:` directive. If the arq worker crashed (OOM, unhandled exception, Redis disconnect), it stayed down permanently, silently stopping all background jobs (emails, auto-tag evaluation, daily reminders)
+- Added `restart: unless-stopped` to the worker service
+
+### Fixed: Notification type not validated at schema level (MEDIUM)
+- **`schemas/notification_preference.py`** — `NotificationPreferenceUpdate.notification_type` was a plain `str` with no validation. Submitting an invalid type (e.g., typo) returned 200 OK but the service silently skipped it, so the user believed they saved a preference that was actually discarded
+- Introduced `NotificationType` as a `Literal` union of all valid types; invalid types now return 422 with the allowed values listed in the error response
+
+---
+
+## 1.2.0 — Post-Phase 5 Quality Review Round 2
+
+**Date**: 2026-04-02
+
+Quality review addressing 2 findings (1 high, 1 medium) across the frontend settings page and backend notification service. Focuses on API envelope handling and notification preference completeness.
+
+### Fixed: Settings page not unwrapping API envelope (HIGH)
+- **`frontend/src/app/dashboard/settings/page.tsx`** — `api.get()` and `api.patch()` return `Envelope<T>` but both call sites set the full envelope object as component state instead of extracting `.data`, causing `prefs.filter()` to crash on a non-array. The entire notification preferences settings page was non-functional
+- Changed `.then(setPrefs)` → `.then((res) => setPrefs(res.data))` and `setPrefs(updated)` → `setPrefs(updated.data)`
+- Same bug pattern as the analytics page fix in 1.1.0
+
+### Fixed: Welcome email bypasses notification preferences (MEDIUM)
+- **`services/notifications.py`** — `send_welcome()` was the only notification function that did not call `is_notification_enabled()` before enqueuing, meaning venues could not disable welcome emails
+- Added `is_notification_enabled(db, reservation.venue_id, "welcome")` check at the top of `send_welcome()`
+- **`schemas/notification_preference.py`** — added `"welcome"` to `NOTIFICATION_TYPES` list so the preference service recognises it as a valid toggleable type
+- **`frontend/src/app/dashboard/settings/page.tsx`** — added "Welcome Email" entry to `NOTIFICATION_LABELS` so the toggle appears in the settings UI
+
+---
+
+## 1.1.0 — Post-Phase 5 Quality Review
+
+**Date**: 2026-04-02
+
+Quality review addressing 4 findings (3 high, 1 medium) across backend tasks, API routes, model exports, and frontend analytics. Focuses on data correctness, cross-tenant authorization, and frontend data handling.
+
+### Fixed: Auto-tag task parameter order + UUID conversion (HIGH)
+- **`core/tasks.py`** — `evaluate_rules_for_guest()` was called with `org_id` and `guest_id` swapped, causing rules to evaluate against the wrong entity
+- Same function received string IDs from arq but service layer expects `uuid.UUID` — added explicit `uuid.UUID()` conversion before calling service functions
+- Also affects `evaluate_all_rules()` path
+
+### Fixed: Missing venue org-scoping on notification preference endpoints (HIGH)
+- **`api/v1/notification_preferences.py`** — both GET and PATCH endpoints accepted any `venue_id` without verifying it belonged to the requesting user's organization
+- Added `_verify_venue_org()` check (returns 404 if venue doesn't belong to user's org), consistent with all other venue-scoped endpoints
+
+### Fixed: Analytics dashboard not unwrapping API envelope (HIGH)
+- **`frontend/src/app/dashboard/analytics/page.tsx`** — `api.get()` returns `Envelope<T>` but all three tabs assigned the raw envelope to state instead of unwrapping `.data`, causing the entire analytics dashboard to render nothing
+- Changed `setResData(data)` → `setResData(res.data)` (and same for guest/operations tabs)
+
+### Fixed: CSV download error handling + memory leak (MEDIUM)
+- **`frontend/src/app/dashboard/analytics/page.tsx`** — CSV download now checks HTTP response status before converting to blob (prevents error responses being saved as `.csv` files)
+- Added `URL.revokeObjectURL()` after download to prevent blob URL memory leak
+- Added `.catch()` handler to surface download errors to the user
+
+### Fixed: NotificationPreference missing from model exports
+- **`models/__init__.py`** — added `NotificationPreference` import and `__all__` entry, consistent with all other models
 
 ---
 

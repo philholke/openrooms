@@ -32,6 +32,11 @@ const NOTIFICATION_LABELS: Record<string, { label: string; description: string; 
     description: "Email sent to guests when their reservation is cancelled",
     category: "Guest Notifications",
   },
+  welcome: {
+    label: "Welcome Email",
+    description: "Email sent to first-time guests after their initial reservation",
+    category: "Guest Notifications",
+  },
   pre_shift_report: {
     label: "Pre-Shift Report",
     description: "Daily email sent to managers with the upcoming shift report",
@@ -54,7 +59,7 @@ export default function SettingsPage() {
       .get<NotificationPref[]>(
         `/venues/${venue.id}/notification-preferences`
       )
-      .then(setPrefs)
+      .then((res) => setPrefs(res.data))
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Failed to load preferences")
       )
@@ -71,7 +76,7 @@ export default function SettingsPage() {
         `/venues/${venue.id}/notification-preferences`,
         [{ notification_type: notificationType, enabled }]
       );
-      setPrefs(updated);
+      setPrefs(updated.data);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 2000);
     } catch (err) {

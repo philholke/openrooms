@@ -49,12 +49,12 @@ async def list_guests(
         writer.writerow(["Name", "Email", "Phone", "Visits", "Tags"])
         for g in items:
             name = f"{g.first_name or ''} {g.last_name or ''}".strip()
-            tags = ", ".join(g.tags) if g.tags else ""
+            tags = ", ".join(g.tag_names) if g.tag_names else ""
             # CSV injection protection
             for val in [name, g.email, g.phone, tags]:
                 pass  # handled in row below
             row = []
-            for val in [name, g.email or "", g.phone or "", g.visit_count, tags]:
+            for val in [name, g.email or "", g.phone or "", g.total_visits, tags]:
                 s = str(val)
                 if s and s[0] in ("=", "+", "-", "@", "\t"):
                     s = f"'{s}"

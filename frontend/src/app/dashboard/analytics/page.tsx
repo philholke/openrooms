@@ -53,20 +53,20 @@ export default function AnalyticsPage() {
     setError(null);
     try {
       if (tab === "Reservations") {
-        const data = await api.get<ReservationAnalytics>(
+        const res = await api.get<ReservationAnalytics>(
           `/venues/${venue.id}/analytics/reservations?date_from=${dateFrom}&date_to=${dateTo}&granularity=day`
         );
-        setResData(data);
+        setResData(res.data);
       } else if (tab === "Guests") {
-        const data = await api.get<GuestAnalytics>(
+        const res = await api.get<GuestAnalytics>(
           `/analytics/guests?date_from=${dateFrom}&date_to=${dateTo}&granularity=month`
         );
-        setGuestData(data);
+        setGuestData(res.data);
       } else {
-        const data = await api.get<OperationsAnalytics>(
+        const res = await api.get<OperationsAnalytics>(
           `/venues/${venue.id}/analytics/operations?date_from=${dateFrom}&date_to=${dateTo}`
         );
-        setOpsData(data);
+        setOpsData(res.data);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load analytics");
@@ -94,18 +94,25 @@ export default function AnalyticsPage() {
     } else {
       url = `/venues/${venue.id}/analytics/operations?date_from=${dateFrom}&date_to=${dateTo}&format=csv`;
     }
-    // Open CSV download in new tab (auth handled by cookies/headers)
     const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const token = localStorage.getItem("access_token");
     fetch(`${base}/api/v1${url}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
-      .then((r) => r.blob())
+      .then((r) => {
+        if (!r.ok) throw new Error(`Download failed (${r.status})`);
+        return r.blob();
+      })
       .then((blob) => {
         const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
+        const blobUrl = URL.createObjectURL(blob);
+        a.href = blobUrl;
         a.download = `${tab.toLowerCase()}-${dateFrom}-to-${dateTo}.csv`;
         a.click();
+        URL.revokeObjectURL(blobUrl);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "CSV download failed");
       });
   };
 

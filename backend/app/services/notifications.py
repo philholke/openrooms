@@ -181,6 +181,9 @@ async def send_welcome(
 ) -> None:
     """Enqueue welcome email for first-time guests."""
     try:
+        if not await is_notification_enabled(db, reservation.venue_id, "welcome"):
+            return
+
         guest = await _load_guest(db, reservation.guest_id)
         venue = await _load_venue(db, reservation.venue_id)
         if not guest or not venue or not guest.email:

@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -9,6 +10,16 @@ NOTIFICATION_TYPES = [
     "reservation_reminder",
     "survey_invite",
     "cancellation_ack",
+    "welcome",
+    "pre_shift_report",
+]
+
+NotificationType = Literal[
+    "reservation_confirmed",
+    "reservation_reminder",
+    "survey_invite",
+    "cancellation_ack",
+    "welcome",
     "pre_shift_report",
 ]
 
@@ -23,5 +34,5 @@ class NotificationPreferenceRead(BaseModel):
 
 
 class NotificationPreferenceUpdate(BaseModel):
-    notification_type: str
+    notification_type: NotificationType
     enabled: bool

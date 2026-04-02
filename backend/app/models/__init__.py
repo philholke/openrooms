@@ -8,6 +8,7 @@ from app.models.tag import Tag
 from app.models.auto_tag_rule import AutoTagRule
 from app.models.survey import Survey, SurveyDispatch
 from app.models.server_assignment import ServerAssignment
+from app.models.notification_preference import NotificationPreference
 
 __all__ = [
     "Organization",
@@ -26,4 +27,5 @@ __all__ = [
     "Survey",
     "SurveyDispatch",
     "ServerAssignment",
+    "NotificationPreference",
 ]

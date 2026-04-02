@@ -55,6 +55,7 @@ services:
     build: ./backend
     command: arq app.core.worker.WorkerSettings
     entrypoint: []
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://openrooms:openrooms@db:5432/openrooms
       DATABASE_URL_SYNC: postgresql+psycopg2://openrooms:openrooms@db:5432/openrooms

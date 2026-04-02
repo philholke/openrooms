@@ -10,6 +10,7 @@ gracefully. A failed task should log the error but not crash the worker.
 """
 
 import logging
+import uuid as _uuid
 
 logger = logging.getLogger(__name__)
 
@@ -117,15 +118,18 @@ async def evaluate_auto_tags_task(
     from app.core.database import async_session_factory
     from app.services.auto_tag import evaluate_all_rules, evaluate_rules_for_guest
 
+    parsed_org_id = _uuid.UUID(org_id)
+    parsed_guest_id = _uuid.UUID(guest_id) if guest_id else None
+
     async with async_session_factory() as db:
         try:
-            if guest_id:
-                await evaluate_rules_for_guest(db, org_id, guest_id)
+            if parsed_guest_id:
+                await evaluate_rules_for_guest(db, parsed_guest_id, parsed_org_id)
                 await db.commit()
                 logger.info("Auto-tag evaluated for guest %s (org=%s)", guest_id, org_id)
                 return {"guest_id": guest_id, "status": "ok"}
             else:
-                result = await evaluate_all_rules(db, org_id)
+                result = await evaluate_all_rules(db, parsed_org_id)
                 await db.commit()
                 logger.info("Bulk auto-tag evaluated for org %s: %s", org_id, result)
                 return {"org_id": org_id, "status": "ok", **result}
